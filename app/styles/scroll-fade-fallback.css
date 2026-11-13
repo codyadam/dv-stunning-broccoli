@@ -1,0 +1,59 @@
+/* Firefox has not shipped animation-timeline: scroll(), so shadcn's
+   @supports not (animation-timeline: scroll()) branch always runs and
+   applies a permanent edge fade. Clamp each fade to Base UI ScrollArea
+   overflow distance when present; absent vars resolve to 0px (no fade).
+   See https://github.com/shadcn-ui/ui/issues/11291 */
+@supports not (animation-timeline: scroll()) {
+  .scroll-fade,
+  .scroll-fade-y {
+    --scroll-fade-t: min(
+      var(--_scroll-fade-size-t),
+      var(--scroll-area-overflow-y-start, 0px)
+    );
+    --scroll-fade-b: min(
+      var(--_scroll-fade-size-b),
+      var(--scroll-area-overflow-y-end, 0px)
+    );
+  }
+
+  .scroll-fade-x {
+    --scroll-fade-s: min(
+      var(--_scroll-fade-size-s),
+      var(--scroll-area-overflow-x-start, 0px)
+    );
+    --scroll-fade-e: min(
+      var(--_scroll-fade-size-e),
+      var(--scroll-area-overflow-x-end, 0px)
+    );
+  }
+
+  .scroll-fade-t {
+    --scroll-fade-t: min(
+      var(--_scroll-fade-size-t),
+      var(--scroll-area-overflow-y-start, 0px)
+    );
+  }
+
+  .scroll-fade-b {
+    --scroll-fade-b: min(
+      var(--_scroll-fade-size-b),
+      var(--scroll-area-overflow-y-end, 0px)
+    );
+  }
+
+  .scroll-fade-l,
+  .scroll-fade-s {
+    --scroll-fade-s: min(
+      var(--_scroll-fade-size-s),
+      var(--scroll-area-overflow-x-start, 0px)
+    );
+  }
+
+  .scroll-fade-r,
+  .scroll-fade-e {
+    --scroll-fade-e: min(
+      var(--_scroll-fade-size-e),
+      var(--scroll-area-overflow-x-end, 0px)
+    );
+  }
+}

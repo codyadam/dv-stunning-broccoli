@@ -1,0 +1,219 @@
+/*
+ * Streamdown markdown in the GitHub markdown-body rhythm (primer / github-markdown-css):
+ * `.markdown-github` for prose, `.markdown-blocks` for code blocks.
+ * Unlayered so it wins over Streamdown's heading `mt-6` / `text-3xl` utilities.
+ * Reads the site's `--border`, `--muted`, `--muted-foreground`, `--radius-md` and `--font-mono`.
+ */
+.markdown-github {
+  line-height: 1.5;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
+}
+
+.markdown-github > :first-child {
+  margin-top: 0 !important;
+}
+
+.markdown-github > :last-child {
+  margin-bottom: 0 !important;
+}
+
+/* `[data-heading="N"]` looks like an hN without being a document heading (previews). */
+.markdown-github h1,
+.markdown-github h2,
+.markdown-github h3,
+.markdown-github h4,
+.markdown-github h5,
+.markdown-github h6,
+.markdown-github [data-heading] {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.markdown-github h1,
+.markdown-github [data-heading="1"] {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-github h2,
+.markdown-github [data-heading="2"] {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid var(--border);
+}
+
+.markdown-github h3,
+.markdown-github [data-heading="3"] {
+  font-size: 1.25em;
+}
+
+.markdown-github h4,
+.markdown-github [data-heading="4"] {
+  font-size: 1em;
+}
+
+.markdown-github h5,
+.markdown-github [data-heading="5"] {
+  font-size: 0.875em;
+}
+
+.markdown-github h6,
+.markdown-github [data-heading="6"] {
+  font-size: 0.85em;
+  color: var(--muted-foreground);
+}
+
+.markdown-github p,
+.markdown-github ul,
+.markdown-github ol,
+.markdown-github blockquote,
+.markdown-github pre,
+.markdown-github [data-streamdown="blockquote"],
+.markdown-github [data-streamdown="unordered-list"],
+.markdown-github [data-streamdown="ordered-list"],
+.markdown-github [data-streamdown="code-block"] {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.markdown-github blockquote,
+.markdown-github [data-streamdown="blockquote"] {
+  padding: 0 1em;
+  color: var(--muted-foreground);
+  border-left: 0.25em solid var(--border);
+  font-style: normal;
+}
+
+.markdown-github ul,
+.markdown-github ol {
+  padding-left: 2em;
+  list-style-position: outside;
+}
+
+.markdown-github ul ul,
+.markdown-github ul ol,
+.markdown-github ol ol,
+.markdown-github ol ul {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.markdown-github li {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.markdown-github li + li {
+  margin-top: 0.25em;
+}
+
+.markdown-github li > p {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-github hr,
+.markdown-github [data-streamdown="horizontal-rule"] {
+  height: 0.25em;
+  padding: 0;
+  margin: 1.5rem 0;
+  border: 0;
+  background-color: var(--border);
+}
+
+.markdown-github [data-streamdown="inline-code"] {
+  padding: 0.2em 0.4em;
+  font-size: 85%;
+  border-radius: var(--radius-md);
+}
+
+/* Flatten Streamdown's nested chat chrome into one shadcn-style code block. */
+.markdown-blocks [data-streamdown="code-block"] {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  gap: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background-color: var(--muted);
+  content-visibility: visible !important;
+  contain-intrinsic-size: none !important;
+}
+
+.markdown-blocks [data-streamdown="code-block-header"] {
+  grid-column: 1;
+  grid-row: 1;
+  height: 2.25rem;
+  padding-inline: 0.75rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.markdown-blocks [data-streamdown="code-block"] > :has(> [data-streamdown="code-block-actions"]) {
+  grid-column: 2;
+  grid-row: 1;
+  position: static;
+  z-index: 1;
+  margin-top: 0;
+  height: 2.25rem;
+  padding-right: 0.25rem;
+}
+
+.markdown-blocks [data-streamdown="code-block-actions"] {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  backdrop-filter: none;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] {
+  grid-column: 1 / -1;
+  max-height: 30rem;
+  padding: 0.75rem 1rem 0.75rem 0.75rem;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  background-color: transparent;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] pre {
+  margin: 0;
+  background: transparent;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] code {
+  counter-reset: line;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] code > span {
+  display: block;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] code > span::before {
+  content: counter(line);
+  counter-increment: line;
+  display: inline-block;
+  width: 1.5rem;
+  margin-inline-end: 1rem;
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--muted-foreground);
+  user-select: none;
+}
+
+.markdown-blocks [data-streamdown="code-block-body"] code span {
+  color: var(--sdm-c, inherit);
+}
+
+.dark .markdown-blocks [data-streamdown="code-block-body"] code span {
+  color: var(--shiki-dark, var(--sdm-c, inherit));
+}
