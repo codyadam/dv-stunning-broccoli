@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
  * widths) so the real page streams in without layout shift.
  */
 
-/** Browse rows: asset deck, title, one-liner and vendor, then the price. */
+/** Browse rows: asset deck, title, one-liner, figures and vendor with domains, then the price. */
 export function MarketListingRowsSkeleton({ rows = 8 }: { rows?: number }) {
   return (
     <ul className="divide-y divide-border overflow-hidden rounded-md border border-border bg-card">
@@ -25,7 +25,7 @@ export function MarketListingRowsSkeleton({ rows = 8 }: { rows?: number }) {
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <Skeleton className="h-5 w-2/3 max-w-sm" />
               <Skeleton className="my-0.5 h-3 w-full max-w-lg" />
-              <div className="mt-1 flex items-center gap-1.5">
+              <div className="mt-1 flex items-center gap-2">
                 <Skeleton className="size-6 shrink-0 rounded-md" />
                 <Skeleton className="h-3 w-28" />
               </div>

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 
+import { BuyerHowItWorks } from "@/components/listings/buyer-how-it-works";
 import { ListingCatalogList } from "@/components/listings/listing-catalog-list";
 import {
   ListingFilterBar,
@@ -12,15 +13,11 @@ import {
 import {
   MARKET_ASSET_TABS,
   MarketBrowseColumns,
-  MarketFiltersButton,
-  MarketInlineFilters,
   MarketLoadingMore,
   MarketSearch,
   MarketSortMenu,
-  marketAssetCountNoun,
   marketAssetKinds,
   marketAssetTypeOf,
-  useFiltersOpen,
   type MarketAssetType,
 } from "@/components/listings/market-browse-frame";
 import { AssetTypeBar } from "@/components/patterns/asset-type-bar";
@@ -56,7 +53,6 @@ function ResultFigure({ value }: { value: number }) {
 export function BrowseView() {
   const { filters, search, setFilters } = useBrowseFilters();
   const assetType = marketAssetTypeOf(filters.kinds);
-  const [filtersOpen, setFiltersOpen] = useFiltersOpen(assetType);
   const query = useListingsBrowseQuery(search);
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = query;
 
@@ -89,16 +85,24 @@ export function BrowseView() {
   const narrowed = listingFilterCount(filters) > 0;
   const matching = firstPage?.total ?? 0;
   const outOf = firstPage?.scopeTotal ?? 0;
-  const noun = marketAssetCountNoun(assetType, narrowed ? outOf : matching);
+  const noun = (narrowed ? outOf : matching) === 1 ? "listing" : "listings";
 
   const results = (
     <div className="flex flex-col gap-3">
-      <div className="flex min-h-8 items-center justify-between gap-3">
-        <p className="min-w-0 text-sm text-muted-foreground tabular-nums">
+      {/* The chips take the room the count and sort leave and wrap within it, so applying a
+          filter never moves the sort. The asset-type bar already names the scope, so the count
+          stays short. */}
+      <div className="flex min-h-7 flex-wrap items-start gap-x-3 gap-y-2">
+        <ListingFilterBar
+          filters={filters}
+          onChange={(next) => setFilters(() => next)}
+          facets={firstPage?.facets}
+          className="order-3 basis-full min-[900px]:order-1 min-[900px]:min-w-0 min-[900px]:flex-1 min-[900px]:basis-0"
+        />
+        <p className="order-1 shrink-0 text-sm/7 text-muted-foreground tabular-nums min-[900px]:order-2">
           {isLoading ? null : narrowed ? (
             <>
-              <ResultFigure value={matching} /> matching out of <ResultFigure value={outOf} />{" "}
-              {noun}
+              <ResultFigure value={matching} /> of <ResultFigure value={outOf} /> {noun}
             </>
           ) : (
             <>
@@ -106,21 +110,14 @@ export function BrowseView() {
             </>
           )}
         </p>
-        <div className="flex shrink-0 items-center gap-1">
-          <MarketFiltersButton
-            active={listingFilterCount(filters)}
-            open={filtersOpen}
-            onToggle={() => setFiltersOpen(!filtersOpen)}
-          />
-          <MarketSortMenu
-            label="Recommended"
-            value={filters.sort}
-            options={BROWSE_SORT_OPTIONS}
-            onChange={(sort) => setFilters((current) => ({ ...current, sort }))}
-          />
-        </div>
+        <MarketSortMenu
+          className="order-2 ml-auto min-[900px]:order-3 min-[900px]:ml-0"
+          label="Recommended"
+          value={filters.sort}
+          options={BROWSE_SORT_OPTIONS}
+          onChange={(sort) => setFilters((current) => ({ ...current, sort }))}
+        />
       </div>
-      <MarketInlineFilters />
 
       {isLoading ? (
         <MarketListingRowsSkeleton rows={5} />
@@ -185,18 +182,11 @@ export function BrowseView() {
             className="mx-auto px-2"
           />
         </div>
+        <BuyerHowItWorks />
         <MarketBrowseColumns
           key={assetType}
           contentKey={assetType}
           resultCount={isLoading ? 0 : loadedCount}
-          filters={
-            <ListingFilterBar
-              filters={filters}
-              onChange={(next) => setFilters(() => next)}
-              open={filtersOpen}
-              facets={firstPage?.facets}
-            />
-          }
           results={results}
         />
       </div>

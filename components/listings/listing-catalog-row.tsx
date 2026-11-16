@@ -7,15 +7,57 @@ import { AssetDeck } from "@/components/listings/asset-deck";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
 import { OrgIdentity } from "@/components/organizations/org-identity";
 import type { Listing } from "@/lib/fake-api/types";
-import { formatPrice } from "@/lib/format";
+import { formatBytes, formatCompact, formatPrice } from "@/lib/format";
+import { summarizeListing } from "@/lib/listings/listing-summary";
 import { cn } from "@/lib/utils";
 
+/** The whole-percent drop from the earlier price, when the price fell to a lower positive one. */
+function percentOff(price: number, was: number | null): number | null {
+  if (was == null || price <= 0 || was <= price) return null;
+  const percent = Math.round(((was - price) / was) * 100);
+  return percent > 0 ? percent : null;
+}
+
+/** `2.5K`, `18.9K`, `309K`: a decimal only below a hundred, where it still means something. */
+function figure(value: number): string {
+  return formatCompact(value).replace(/^(\d{3})\.\d/, "$1");
+}
+
+const MAX_FORMATS = 2;
+
 /**
- * One listing row that opens the listing record: the asset deck and identity on the left, the
- * price on the right. An arrow in the bottom-right corner while hovered or focused marks the row
- * as a link.
+ * The listing's size over what it is made of, in the same shape for both kinds: lines of code
+ * over languages, or files and bytes over file types. Every row's sits in the same column, so
+ * they compare down the list.
+ */
+function ListingRowSize({ listing }: { listing: Listing }) {
+  const summary = summarizeListing(listing);
+  const isCode = summary.codebases > 0;
+  const size = isCode
+    ? `${figure(summary.linesOfCode)} lines`
+    : `${figure(summary.fileCount)} files · ${formatBytes(summary.sizeBytes).replace(".0 ", " ")}`;
+  const formats = isCode
+    ? summary.languages
+    : summary.extensions.map((extension) => extension.toUpperCase());
+  const more = formats.length - MAX_FORMATS;
+  return (
+    <div className="flex w-40 min-w-0 flex-col gap-1">
+      <span className="truncate text-sm tabular-nums">{size}</span>
+      <span className="truncate text-xs text-muted-foreground">
+        {formats.slice(0, MAX_FORMATS).join(", ")}
+        {more > 0 ? ` +${more}` : null}
+      </span>
+    </div>
+  );
+}
+
+/**
+ * One listing row that opens the listing record: the asset deck and identity on the left, then
+ * its size, then the price. An arrow in the bottom-right corner while hovered or focused marks
+ * the row as a link.
  */
 export function ListingCatalogRow({ listing }: { listing: Listing }) {
+  const discount = percentOff(listing.buyNowPrice, listing.priceBeforeDrop);
   const router = useRouter();
   const open = () => router.push(`/listings/${listing.id}`);
 
@@ -59,13 +101,25 @@ export function ListingCatalogRow({ listing }: { listing: Listing }) {
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-4 sm:justify-end sm:gap-9">
-        {/* The height holds both lines, so every row is the same height and a price alone
-            centers. */}
-        <div className="flex min-h-13 min-w-0 flex-col items-end justify-center gap-0.5 text-right">
-          <span className="text-row-price tabular-nums">{formatPrice(listing.buyNowPrice)}</span>
-          {listing.acceptsOffers ? (
-            <span className="text-xs text-muted-foreground tabular-nums">Or best offer</span>
+      <div className="flex items-center justify-between gap-6">
+        <ListingRowSize listing={listing} />
+        {/* The fixed width keeps the size column in line from row to row; the height holds both
+            lines, so every row is the same height and a price alone centers. */}
+        <div className="flex min-h-13 w-32 flex-col items-end justify-center gap-0.5 text-right">
+          <span className="flex items-baseline gap-1.5">
+            {discount ? (
+              <s className="text-xs text-muted-foreground tabular-nums">
+                {formatPrice(listing.priceBeforeDrop ?? 0)}
+              </s>
+            ) : null}
+            <span className="text-row-price tabular-nums">{formatPrice(listing.buyNowPrice)}</span>
+          </span>
+          {discount || listing.acceptsOffers ? (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {discount ? <span className="text-tone-success">{discount}% off</span> : null}
+              {discount && listing.acceptsOffers ? " · " : null}
+              {listing.acceptsOffers ? "Or best offer" : null}
+            </span>
           ) : null}
         </div>
       </div>

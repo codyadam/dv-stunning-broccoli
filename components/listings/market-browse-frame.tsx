@@ -6,7 +6,6 @@ import {
   RiArrowUpDownLine,
   RiArrowUpLine,
   RiCheckLine,
-  RiEqualizer3Line,
   RiSearchLine,
 } from "@remixicon/react";
 
@@ -77,18 +76,10 @@ export type MarketAssetType = MarketAssetGroup | "all";
 
 const MARKET_ASSET_GROUPS: Record<
   MarketAssetGroup,
-  { label: string; noun: readonly [string, string]; kind: ListingAssetKind }
+  { label: string; kind: ListingAssetKind }
 > = {
-  codebases: {
-    label: "Codebases",
-    noun: ["listing with codebases", "listings with codebases"],
-    kind: "repo",
-  },
-  "raw-data": {
-    label: "Raw data",
-    noun: ["listing with raw data", "listings with raw data"],
-    kind: "zip",
-  },
+  codebases: { label: "Codebases", kind: "repo" },
+  "raw-data": { label: "Raw data", kind: "zip" },
 };
 
 export const MARKET_ASSET_TABS: readonly AssetTypeBarTab<MarketAssetType>[] = [
@@ -108,19 +99,14 @@ export function marketAssetTypeOf(kinds: readonly ListingAssetKind[]): MarketAss
   return kinds[0] === "repo" ? "codebases" : "raw-data";
 }
 
-/** Noun for a result count under a bar entry, e.g. "3 listings with codebases". */
-export function marketAssetCountNoun(type: MarketAssetType, count: number): string {
-  const [singular, plural] =
-    type === "all" ? ["listing", "listings"] : MARKET_ASSET_GROUPS[type].noun;
-  return count === 1 ? singular : plural;
-}
-
 export function MarketSortMenu<T extends string>({
+  className,
   label,
   value,
   options,
   onChange,
 }: {
+  className?: string;
   label: string;
   value: T;
   options: readonly { id: T; label: string }[];
@@ -130,7 +116,7 @@ export function MarketSortMenu<T extends string>({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+      <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className={className} />}>
         <RiArrowUpDownLine data-icon="inline-start" />
         {current}
         <RiArrowDownSLine data-icon="inline-end" className="opacity-60" />
@@ -150,63 +136,21 @@ export function MarketSortMenu<T extends string>({
   );
 }
 
-/**
- * Whether the **Filter bar** shows every chip on `view`, the tab on screen: off until the user
- * opens it, and off again when the view changes or the page is left.
- */
-export function useFiltersOpen(view: string) {
-  const [openOn, setOpenOn] = React.useState<string | null>(null);
-  const setOpen = React.useCallback(
-    (open: boolean) => setOpenOn(open ? view : null),
-    [view],
-  );
-  return [openOn === view, setOpen] as const;
-}
-
-/** The **Filters** toggle beside a list's sort, pressed while the **Filter bar** is open. */
-export function MarketFiltersButton({
-  active,
-  open,
-  onToggle,
-}: {
-  /** Filters applied, shown beside the label. */
-  active: number;
-  open: boolean;
-  onToggle: () => void;
-}) {
-  return (
-    <Button
-      variant="ghost"
-      size="sm"
-      aria-pressed={open}
-      onClick={onToggle}
-      className="aria-pressed:bg-muted"
-    >
-      <RiEqualizer3Line data-icon="inline-start" aria-hidden />
-      Filters
-      {active > 0 ? <span className="tabular-nums">{active}</span> : null}
-    </Button>
-  );
-}
-
 export const SECTION_ICON_BUTTON_CLASS = "text-muted-foreground hover:text-foreground";
 
 const MARKET_ENTER =
   "motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 duration-180 ease-[ease-out]";
 
 /**
- * The results, with the **Filter bar** placed inside them by `MarketInlineFilters` (under their
- * count and sort row, so opening it never moves that row). The results fade in on mount and again
- * whenever `contentKey` changes, which remounts them. They take at least the main panel's height,
- * so closing the bar while scrolled to the count row never shortens the page under it.
+ * The results column. The results fade in on mount and again whenever `contentKey` changes, which
+ * remounts them. They take at least the main panel's height, so a shorter result list never
+ * shortens the page under the scroll position.
  */
 export function MarketBrowseColumns({
-  filters,
   results,
   resultCount,
   contentKey,
 }: {
-  filters: React.ReactNode;
   results: React.ReactNode;
   resultCount: number;
   contentKey?: string;
@@ -215,27 +159,17 @@ export function MarketBrowseColumns({
   const scrollsFar = useMainPanelScrollsFar(resultsRef);
   const panelHeight = useMainPanelHeight();
   return (
-    <MarketFiltersContext.Provider value={filters}>
-      <div className="@container" style={{ minHeight: panelHeight || undefined }}>
-        <div
-          key={`results:${contentKey ?? ""}`}
-          ref={resultsRef}
-          className={cn("flex min-w-0 flex-col", MARKET_ENTER)}
-        >
-          {results}
-          {resultCount > 0 && scrollsFar ? <MarketBackToTop className="mt-6 self-center" /> : null}
-        </div>
+    <div className="@container" style={{ minHeight: panelHeight || undefined }}>
+      <div
+        key={`results:${contentKey ?? ""}`}
+        ref={resultsRef}
+        className={cn("flex min-w-0 flex-col", MARKET_ENTER)}
+      >
+        {results}
+        {resultCount > 0 && scrollsFar ? <MarketBackToTop className="mt-6 self-center" /> : null}
       </div>
-    </MarketFiltersContext.Provider>
+    </div>
   );
-}
-
-/** The **Filter bar** `MarketBrowseColumns` holds. */
-const MarketFiltersContext = React.createContext<React.ReactNode>(null);
-
-/** Where a market list shows its **Filter bar**: right under its count and sort row. */
-export function MarketInlineFilters() {
-  return React.useContext(MarketFiltersContext);
 }
 
 /** The note under a market list while its next page loads. */

@@ -37,32 +37,30 @@ export type FilterBarItem = {
 };
 
 /**
- * The filters above a list, as a row of chips that wraps. `open` shows every chip; closed, only
- * the chips holding a filter, so what narrows the list is always on screen.
+ * The filters of a list, as chips that wrap, all always shown. A "Clear" button follows while any
+ * chip holds a filter. `className` places the group inside its toolbar.
  */
 export function FilterBar({
   items,
-  open,
   onClear,
+  className,
 }: {
   items: readonly FilterBarItem[];
-  open: boolean;
   onClear: () => void;
+  className?: string;
 }) {
-  const shown = open ? items : items.filter((item) => item.active);
-  if (shown.length === 0) return null;
   return (
     <div
       role="group"
       aria-label="Filters"
       data-slot="filter-bar"
-      className="flex flex-wrap items-center gap-2"
+      className={cn("flex flex-wrap items-center gap-2", className)}
     >
-      {shown.map((item) => (
+      {items.map((item) => (
         <React.Fragment key={item.id}>{item.node}</React.Fragment>
       ))}
       {items.some((item) => item.active) ? (
-        <Button type="button" variant="ghost" onClick={onClear}>
+        <Button type="button" variant="ghost" size="sm" onClick={onClear}>
           Clear
         </Button>
       ) : null}
@@ -97,7 +95,7 @@ export function FilterChip({
   return (
     <Popover>
       <ButtonGroup>
-        <PopoverTrigger render={<Button type="button" variant={variant} />}>
+        <PopoverTrigger render={<Button type="button" variant={variant} size="sm" />}>
           {active ? (
             <>
               <span className="text-muted-foreground">{label}:</span>
@@ -114,7 +112,7 @@ export function FilterChip({
           <Button
             type="button"
             variant={variant}
-            size="icon"
+            size="icon-sm"
             aria-label={`Clear ${label}`}
             onClick={onClear}
           >
@@ -145,6 +143,7 @@ export function FilterSwitchChip({
     <Button
       type="button"
       variant={checked ? "secondary" : "outline"}
+      size="sm"
       aria-pressed={checked}
       onClick={() => onCheckedChange(!checked)}
     >

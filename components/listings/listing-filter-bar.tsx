@@ -57,19 +57,19 @@ function facetValues(counts: Record<string, number> | undefined, selected: reado
 
 /**
  * The browse search's filters as a `FilterBar`: an on-or-off filter is a one-click chip, anything
- * else a chip whose popup holds its controls. `open` is the search bar's **Filters**.
+ * else a chip whose popup holds its controls. Every chip is always shown.
  */
 export function ListingFilterBar({
   filters,
   onChange,
-  open,
   facets,
+  className,
 }: {
   filters: ListingSearch;
   onChange: (next: ListingSearch) => void;
-  open: boolean;
   /** Browse facet counts; values without listings are left out. */
   facets?: ListingFacets;
+  className?: string;
 }) {
   const items: FilterBarItem[] = [];
 
@@ -166,6 +166,10 @@ export function ListingFilterBar({
   });
 
   return (
-    <FilterBar items={items} open={open} onClear={() => onChange(clearListingFilters(filters))} />
+    <FilterBar
+      items={items}
+      onClear={() => onChange(clearListingFilters(filters))}
+      className={className}
+    />
   );
 }

@@ -1,4 +1,5 @@
 import { generateCodebaseActivity } from "@/lib/fake-api/codebase-activity";
+import { restoreDismissed } from "@/lib/hooks/use-dismissed";
 import { readDb, resetDb, writeDb, type AssetRecord, type ListingRecord } from "@/lib/fake-api/db";
 import {
   DEMO_VENDOR_ID,
@@ -871,4 +872,5 @@ export async function deleteListing(id: string): Promise<void> {
 export async function resetDemoData(): Promise<void> {
   await delay();
   resetDb();
+  restoreDismissed();
 }
