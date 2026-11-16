@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 import { CreateGroupDialog, NewGroupButton } from "@/app/(app)/inventory/_components/create-group-dialog";
@@ -38,15 +39,20 @@ import {
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyTitle } from "@/components/ui/empty";
 import {
+  useCreateDraftListingsMutation,
   useCreateGroupMutation,
   useDeleteAssetsMutation,
   useDeleteGroupMutation,
   useInventoryQuery,
   useMoveAssetsMutation,
 } from "@/lib/fake-api/hooks";
-import type { InventoryAsset, InventoryGroup, InventorySort } from "@/lib/fake-api/types";
+import type { DraftListingMode, InventoryAsset, InventoryGroup, InventorySort } from "@/lib/fake-api/types";
 import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
 import { assetEditHref } from "@/lib/inventory/routes";
+import { isListable } from "@/lib/inventory/status";
+import { PER_ASSET_DRAFT_LIMIT } from "@/lib/listings/listing-edit";
+import { clearOpenSet, startOpenSet } from "@/lib/listings/open-set";
+import { listingEditHref } from "@/lib/listings/routes";
 import { useSourcePickerParams } from "@/lib/sources/source-picker-params";
 
 type InventorySectionProps = {
@@ -94,6 +100,8 @@ function InventoryAssets({
   const createGroup = useCreateGroupMutation();
   const deleteGroup = useDeleteGroupMutation();
   const moveAssets = useMoveAssetsMutation();
+  const createDrafts = useCreateDraftListingsMutation();
+  const router = useRouter();
   const deleteAssets = useDeleteAssetsMutation();
 
   const [addParam, setAddParam] = useInventoryAddDialogParam();
@@ -170,7 +178,11 @@ function InventoryAssets({
   const deletableAssets = selectedAssets.filter((asset) => asset.listings.length === 0);
   const listedSelected = selectedAssets.length - deletableAssets.length;
   const busy =
-    createGroup.isPending || deleteGroup.isPending || moveAssets.isPending || deleteAssets.isPending;
+    createGroup.isPending ||
+    deleteGroup.isPending ||
+    moveAssets.isPending ||
+    deleteAssets.isPending ||
+    createDrafts.isPending;
 
   const handleMoveToGroup = async (groupId: string | null) => {
     try {
@@ -206,6 +218,39 @@ function InventoryAssets({
       setGroupPendingDelete(null);
     } catch (error) {
       toast.error(errorMessage(error, "Could not delete group"));
+    }
+  };
+
+  const handleCreateListing = async (mode: DraftListingMode) => {
+    const listable = selectedAssets.filter(isListable);
+    const skipped = selectedAssets.length - listable.length;
+    if (listable.length === 0) {
+      toast.error("Select codebases or raw data with linked data to list them from inventory.");
+      return;
+    }
+    if (skipped > 0) {
+      toast(
+        skipped === 1
+          ? "Skipped 1 selected asset with no data or data not processed yet."
+          : `Skipped ${skipped} selected assets with no data or data not processed yet.`,
+      );
+    }
+    try {
+      const { ids, notCreated } = await createDrafts.mutateAsync({
+        assetIds: listable.map((asset) => asset.id),
+        mode,
+      });
+      if (mode === "per_asset" && notCreated > 0) {
+        toast(
+          `Created ${ids.length} listings. One listing per asset creates at most ${PER_ASSET_DRAFT_LIMIT} at a time.`,
+        );
+      }
+      if (ids.length > 1) startOpenSet(ids);
+      else clearOpenSet();
+      clearSelection();
+      router.push(listingEditHref(ids[0]!));
+    } catch (error) {
+      toast.error(errorMessage(error, "Could not create listing"));
     }
   };
 
@@ -328,6 +373,7 @@ function InventoryAssets({
         onDelete={() => setDeleteOpen(true)}
         onMoveToGroup={(groupId) => void handleMoveToGroup(groupId)}
         onCreateGroupAndMove={(name) => void handleCreateGroupAndMove(name)}
+        onCreateListing={(mode) => void handleCreateListing(mode)}
         onClear={clearSelection}
         editHref={selectedAssets.length === 1 ? assetEditHref(selectedAssets[0]!.id) : null}
       />

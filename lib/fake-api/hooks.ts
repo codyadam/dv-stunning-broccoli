@@ -11,10 +11,13 @@ import {
 import * as api from "@/lib/fake-api/api";
 import type {
   AssetPatch,
+  DraftListingMode,
   ForgeProvider,
   ForgeRepository,
   InventoryAsset,
   InventorySearch,
+  ListingDraft,
+  ListingPatch,
   ListingSearch,
   NewUpload,
 } from "@/lib/fake-api/types";
@@ -22,11 +25,18 @@ import type {
 /** How often an asset still being analyzed is fetched again. */
 const ASSET_ANALYSIS_POLL_MS = 5_000;
 
+/** How often a listing in quality checks is fetched again. */
+const LISTING_REVIEW_POLL_MS = 2_000;
+
 const BROWSE_PAGE_SIZE = 8;
 
 const queryKeys = {
+  listingsAll: ["listings"] as const,
   listings: (search: ListingSearch) => ["listings", search] as const,
+  listingAll: ["listing"] as const,
   listing: (id: string) => ["listing", id] as const,
+  ownListings: ["own-listings"] as const,
+  listingDraft: (id: string) => ["listing-draft", id] as const,
   inventory: (search: InventorySearch) => ["inventory", search] as const,
   inventoryAll: ["inventory"] as const,
   asset: (id: string) => ["asset", id] as const,
@@ -53,7 +63,31 @@ export function useListingsBrowseQuery(search: ListingSearch) {
 }
 
 export function useListingQuery(id: string) {
-  return useQuery({ queryKey: queryKeys.listing(id), queryFn: () => api.getListing(id) });
+  return useQuery({
+    queryKey: queryKeys.listing(id),
+    queryFn: () => api.getListing(id),
+    refetchInterval: (query) =>
+      query.state.data?.workspace?.status === "in_review" ? LISTING_REVIEW_POLL_MS : false,
+  });
+}
+
+export function useOwnListingsQuery() {
+  return useQuery({
+    queryKey: queryKeys.ownListings,
+    queryFn: api.listOwnListings,
+    refetchInterval: (query) =>
+      query.state.data?.some((listing) => listing.workspace?.status === "in_review")
+        ? LISTING_REVIEW_POLL_MS
+        : false,
+  });
+}
+
+export function useListingDraftQuery(id: string) {
+  return useQuery({
+    queryKey: queryKeys.listingDraft(id),
+    queryFn: () => api.getListingDraft(id),
+    refetchInterval: (query) => (query.state.data?.status === "in_review" ? LISTING_REVIEW_POLL_MS : false),
+  });
 }
 
 export function useInventoryQuery(search: InventorySearch) {
@@ -167,6 +201,75 @@ export function useMoveAssetsMutation() {
     mutationFn: ({ ids, groupId }: { ids: readonly string[]; groupId: string | null }) =>
       api.moveAssets(ids, groupId),
     onSuccess: invalidate,
+  });
+}
+
+/** Listings change what browse, the listing page, inventory and asset pages show. */
+function useInvalidateListings() {
+  const queryClient = useQueryClient();
+  return () =>
+    Promise.all(
+      [
+        queryKeys.listingsAll,
+        queryKeys.listingAll,
+        queryKeys.ownListings,
+        queryKeys.inventoryAll,
+        queryKeys.assetAll,
+      ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+    );
+}
+
+export function useCreateDraftListingsMutation() {
+  const invalidate = useInvalidateListings();
+  return useMutation({
+    mutationFn: ({ assetIds, mode }: { assetIds: readonly string[]; mode: DraftListingMode }) =>
+      api.createDraftListings(assetIds, mode),
+    onSuccess: invalidate,
+  });
+}
+
+function useListingDraftMutation<Args>(mutationFn: (args: Args) => Promise<ListingDraft>) {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateListings();
+  return useMutation({
+    mutationFn,
+    onSuccess: (draft) => {
+      queryClient.setQueryData(queryKeys.listingDraft(draft.id), draft);
+      return invalidate();
+    },
+  });
+}
+
+export function useUpdateListingMutation() {
+  return useListingDraftMutation(({ id, patch }: { id: string; patch: ListingPatch }) =>
+    api.updateListing(id, patch),
+  );
+}
+
+export function useSubmitListingMutation() {
+  return useListingDraftMutation((id: string) => api.submitListing(id));
+}
+
+export function usePublishListingMutation() {
+  const invalidate = useInvalidateListings();
+  return useMutation({ mutationFn: (id: string) => api.publishListing(id), onSuccess: invalidate });
+}
+
+export function useUnpublishListingMutation() {
+  const invalidate = useInvalidateListings();
+  return useMutation({ mutationFn: (id: string) => api.unpublishListing(id), onSuccess: invalidate });
+}
+
+export function useDeleteListingMutation() {
+  const queryClient = useQueryClient();
+  const invalidate = useInvalidateListings();
+  return useMutation({
+    mutationFn: (id: string) => api.deleteListing(id),
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: queryKeys.listing(id) });
+      queryClient.removeQueries({ queryKey: queryKeys.listingDraft(id) });
+      return invalidate();
+    },
   });
 }
 

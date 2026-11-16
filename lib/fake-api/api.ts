@@ -1,16 +1,20 @@
 import { generateCodebaseActivity } from "@/lib/fake-api/codebase-activity";
-import { readDb, resetDb, writeDb, type AssetRecord } from "@/lib/fake-api/db";
+import { readDb, resetDb, writeDb, type AssetRecord, type ListingRecord } from "@/lib/fake-api/db";
 import {
+  DEMO_VENDOR_ID,
   FORGE_REPOSITORIES,
   LISTING_SPECS,
   VENDORS,
+  checkVerdicts,
   listingVerdicts,
   type ListingSpec,
 } from "@/lib/fake-api/fixtures";
 import { codebaseStructure, rawDataStructure } from "@/lib/fake-api/structure";
 import type {
   AnalysisStatus,
+  AssetListingRef,
   AssetPatch,
+  DraftListingMode,
   ForgeProvider,
   ForgeRepository,
   InventoryAsset,
@@ -19,11 +23,22 @@ import type {
   InventorySearch,
   Listing,
   ListingAsset,
+  ListingDraft,
   ListingPage,
+  ListingPatch,
   ListingSearch,
+  ListingStatus,
   ListingVendor,
   NewUpload,
 } from "@/lib/fake-api/types";
+import {
+  DRAFT_LISTING_TITLE,
+  LISTING_TITLE_MAX,
+  PER_ASSET_DRAFT_LIMIT,
+  listingDisplayTitle,
+  listingErrors,
+  type ListingFields,
+} from "@/lib/listings/listing-edit";
 
 /** A refused request, with a message fit to show the user. */
 export class ApiError extends Error {
@@ -113,17 +128,135 @@ function buildListing(spec: ListingSpec): Listing {
     dvQualityCertified: spec.certified,
     qcVerdicts: listingVerdicts(spec),
     qcCheckedAt: spec.updatedAt ?? spec.postedAt,
+    workspace: null,
   };
 }
 
 const LISTINGS: readonly Listing[] = LISTING_SPECS.map(buildListing);
 
+/** How long a submitted listing's quality checks run before it is ready to go live. */
+export const LISTING_REVIEW_MS = 6_000;
+
+function listingStatus(record: ListingRecord, now: number): ListingStatus {
+  if (record.status !== "in_review" || record.reviewStartsAt === null) return record.status;
+  return now - record.reviewStartsAt < LISTING_REVIEW_MS ? "in_review" : "ready";
+}
+
+function toListingAsset(record: AssetRecord, priceUsd: number | null): ListingAsset {
+  const base = {
+    name: record.title,
+    inventoryAssetId: record.id,
+    description: record.description,
+    priceUsd: priceUsd ?? 0,
+  };
+  if (record.codebase) {
+    const codebase = record.codebase;
+    return {
+      ...base,
+      kind: "repo",
+      structure: codebaseStructure(record.id, codebase.languages[0] ?? ""),
+      languages: codebase.languages,
+      linesOfCode: codebase.linesOfCode,
+      commits: codebase.commits,
+      contributors: codebase.contributors,
+      historyStart: codebase.historyStart,
+      historyEnd: codebase.historyEnd,
+    };
+  }
+  const rawData = record.rawData ?? { fileCount: 0, sizeBytes: 0, extensions: {} };
+  return {
+    ...base,
+    kind: "zip",
+    structure: rawDataStructure(record.id, rawData.extensions),
+    fileCount: rawData.fileCount,
+    sizeBytes: rawData.sizeBytes,
+    extensions: rawData.extensions,
+  };
+}
+
+/** A listing the vendor composed, as buyers and the listing page read it. */
+function toOwnListing(record: ListingRecord, now: number): Listing {
+  const status = listingStatus(record, now);
+  const db = readDb();
+  const assets = record.members.flatMap((member) => {
+    const asset = db.assets.find((candidate) => candidate.id === member.assetId);
+    return asset ? [toListingAsset(asset, member.priceUsd)] : [];
+  });
+  const checked = status === "ready" || status === "live";
+  const checkedAt =
+    checked && record.reviewStartsAt !== null
+      ? new Date(record.reviewStartsAt + LISTING_REVIEW_MS).toISOString()
+      : null;
+  const domainTags = [
+    ...new Set(
+      record.members.flatMap(
+        (member) => db.assets.find((candidate) => candidate.id === member.assetId)?.domainTags ?? [],
+      ),
+    ),
+  ];
+  return {
+    id: record.id,
+    title: listingDisplayTitle(record.title),
+    oneLiner: record.oneLiner,
+    descriptionMarkdown: record.description,
+    assets,
+    vendor: listingVendor(DEMO_VENDOR_ID),
+    domainTags,
+    postedAt: record.publishedAt ?? record.createdAt,
+    updatedAt: null,
+    buyNowPrice: assets.reduce((sum, asset) => sum + asset.priceUsd, 0),
+    priceBeforeDrop: null,
+    acceptsOffers: true,
+    dvQualityCertified: checked,
+    qcVerdicts:
+      status === "draft"
+        ? []
+        : checkVerdicts(
+            {
+              hasCode: assets.some((asset) => asset.kind === "repo"),
+              hasData: assets.some((asset) => asset.kind === "zip"),
+            },
+            () => (checked ? "passed" : "pending"),
+          ),
+    qcCheckedAt: checkedAt,
+    workspace: { status, createdAt: record.createdAt },
+  };
+}
+
+/** Every listing on the catalog: the fixtures and the vendor's live listings, newest counts included. */
+function catalogListings(now: number): Listing[] {
+  const live = readDb()
+    .listings.map((record) => toOwnListing(record, now))
+    .filter((listing) => listing.workspace?.status === "live");
+  return [...LISTINGS, ...live].map((listing) =>
+    listing.vendor.id === DEMO_VENDOR_ID && live.length > 0
+      ? { ...listing, vendor: { ...listing.vendor, openListings: listing.vendor.openListings + live.length } }
+      : listing,
+  );
+}
+
+function findListing(id: string, now: number): Listing | undefined {
+  const onCatalog = catalogListings(now).find((listing) => listing.id === id);
+  if (onCatalog) return onCatalog;
+  const own = readDb().listings.find((record) => record.id === id);
+  return own ? toOwnListing(own, now) : undefined;
+}
+
 function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
   const status = analysisStatus(record, now);
   const measured = status === "complete";
-  const listings = LISTINGS.filter((listing) =>
-    listing.assets.some((asset) => asset.inventoryAssetId === record.id),
-  ).map((listing) => ({ id: listing.id, title: listing.title }));
+  const listings: AssetListingRef[] = [
+    ...LISTINGS.filter((listing) =>
+      listing.assets.some((asset) => asset.inventoryAssetId === record.id),
+    ).map((listing) => ({ id: listing.id, title: listing.title, status: "live" as const })),
+    ...readDb()
+      .listings.filter((listing) => listing.members.some((member) => member.assetId === record.id))
+      .map((listing) => ({
+        id: listing.id,
+        title: listingDisplayTitle(listing.title),
+        status: listingStatus(listing, now),
+      })),
+  ];
   const { codebase, rawData } = record;
   const missing = [
     ...(record.description ? [] : ["Description"]),
@@ -225,7 +358,7 @@ export async function listListings(
 ): Promise<ListingPage> {
   await delay();
   const query = search.query.trim();
-  const inKinds = LISTINGS.filter(
+  const inKinds = catalogListings(Date.now()).filter(
     (listing) =>
       search.kinds.length === 0 ||
       listing.assets.some((asset) => search.kinds.includes(asset.kind)),
@@ -270,7 +403,7 @@ export async function listListings(
 
 export async function getListing(id: string): Promise<Listing> {
   await delay();
-  const listing = LISTINGS.find((candidate) => candidate.id === id);
+  const listing = findListing(id, Date.now());
   if (!listing) throw new ApiError(`No listing with id ${id}.`, 404);
   return listing;
 }
@@ -326,7 +459,7 @@ export async function getCodebaseActivity(
       structure: codebaseStructure(record.id, record.codebase.languages[0] ?? ""),
     });
   }
-  const listing = LISTINGS.find((candidate) => candidate.id === source.listingId);
+  const listing = findListing(source.listingId, Date.now());
   const asset = listing?.assets.find((candidate) => candidate.name === source.assetName);
   if (!asset || asset.kind !== "repo") {
     throw new ApiError(`Listing ${source.listingId} has no codebase ${source.assetName}.`, 404);
@@ -548,6 +681,191 @@ export async function moveAssets(ids: readonly string[], groupId: string | null)
     ...db,
     assets: db.assets.map((record) => (ids.includes(record.id) ? { ...record, groupId } : record)),
   }));
+}
+
+function requireListingRecord(id: string): ListingRecord {
+  const record = readDb().listings.find((candidate) => candidate.id === id);
+  if (!record) throw new ApiError(`No listing with id ${id} among your listings.`, 404);
+  return record;
+}
+
+function saveListingRecord(next: ListingRecord): void {
+  writeDb((db) => ({
+    ...db,
+    listings: db.listings.map((candidate) => (candidate.id === next.id ? next : candidate)),
+  }));
+}
+
+/** Whether an inventory asset can go into a listing: its data is linked and analyzed. */
+function listableRecord(record: AssetRecord, now: number): boolean {
+  return analysisStatus(record, now) === "complete" && (record.codebase !== null || record.rawData !== null);
+}
+
+function toListingDraft(record: ListingRecord, now: number): ListingDraft {
+  const assets = readDb().assets;
+  return {
+    id: record.id,
+    status: listingStatus(record, now),
+    title: record.title,
+    oneLiner: record.oneLiner,
+    description: record.description,
+    members: record.members.flatMap((member) => {
+      const asset = assets.find((candidate) => candidate.id === member.assetId);
+      return asset ? [{ asset: toInventoryAsset(asset, now), priceUsd: member.priceUsd }] : [];
+    }),
+    autoClearingPriceUsd: record.autoClearingPriceUsd,
+    updatedAt: record.updatedAt,
+  };
+}
+
+function newListingRecord(assets: readonly AssetRecord[], now: number): ListingRecord {
+  const at = new Date(now).toISOString();
+  return {
+    id: newId("lst"),
+    title: assets.length === 1 ? assets[0]!.title.slice(0, LISTING_TITLE_MAX) : DRAFT_LISTING_TITLE,
+    oneLiner: "",
+    description: "",
+    members: assets.map((asset) => ({ assetId: asset.id, priceUsd: asset.priceUsd })),
+    autoClearingPriceUsd: null,
+    status: "draft",
+    reviewStartsAt: null,
+    createdAt: at,
+    updatedAt: at,
+    publishedAt: null,
+  };
+}
+
+/**
+ * Creates draft listings from inventory assets: one per asset, or one holding them all. Asking
+ * prices prefill the listing prices.
+ */
+export async function createDraftListings(
+  assetIds: readonly string[],
+  mode: DraftListingMode,
+): Promise<{ ids: string[]; notCreated: number }> {
+  await delay();
+  const now = Date.now();
+  const assets = assetIds.map(requireRecord);
+  const unlistable = assets.find((asset) => !listableRecord(asset, now));
+  if (unlistable) throw new ApiError(`“${unlistable.title}” has no analyzed data to list yet.`, 409);
+  if (assets.length === 0) throw new ApiError("Pick at least one asset to list.", 400);
+  const groups = mode === "all" ? [assets] : assets.slice(0, PER_ASSET_DRAFT_LIMIT).map((asset) => [asset]);
+  const records = groups.map((group) => newListingRecord(group, now));
+  writeDb((db) => ({ ...db, listings: [...records, ...db.listings] }));
+  const notCreated = mode === "per_asset" ? assets.length - groups.length : 0;
+  return { ids: records.map((record) => record.id), notCreated };
+}
+
+/** The vendor's own listings, newest first, for inventory. */
+export async function listOwnListings(): Promise<Listing[]> {
+  await delay();
+  const now = Date.now();
+  return readDb().listings.map((record) => toOwnListing(record, now));
+}
+
+export async function getListingDraft(id: string): Promise<ListingDraft> {
+  await delay();
+  return toListingDraft(requireListingRecord(id), Date.now());
+}
+
+/**
+ * Saves edits to a listing. A live listing only takes a new auto-clearing price; a listing in
+ * review takes nothing; a ready listing that changes goes back to draft for a fresh review.
+ */
+export async function updateListing(id: string, patch: ListingPatch): Promise<ListingDraft> {
+  await delay();
+  const now = Date.now();
+  const record = requireListingRecord(id);
+  const status = listingStatus(record, now);
+  const changesContent = Object.keys(patch).some((key) => key !== "autoClearingPriceUsd");
+  if (status === "in_review") throw new ApiError("Quality checks are still running.", 409);
+  if (status === "live" && changesContent) {
+    throw new ApiError("Hide this listing from the catalog to edit it.", 409);
+  }
+  if (patch.members) {
+    const ids = patch.members.map((member) => member.assetId);
+    if (new Set(ids).size !== ids.length) throw new ApiError("An asset can be in a listing only once.", 400);
+    for (const member of patch.members) {
+      const asset = requireRecord(member.assetId);
+      const alreadyIn = record.members.some((current) => current.assetId === member.assetId);
+      if (!alreadyIn && !listableRecord(asset, now)) {
+        throw new ApiError(`“${asset.title}” has no analyzed data to list yet.`, 409);
+      }
+    }
+  }
+  const fields: ListingFields = {
+    title: patch.title ?? record.title,
+    oneLiner: patch.oneLiner ?? record.oneLiner,
+    description: patch.description ?? record.description,
+    members: patch.members ?? record.members,
+    autoClearingPriceUsd:
+      patch.autoClearingPriceUsd !== undefined ? patch.autoClearingPriceUsd : record.autoClearingPriceUsd,
+  };
+  const problem = Object.values(listingErrors(fields, { submitting: false }))[0];
+  if (problem) throw new ApiError(problem, 400);
+  const next: ListingRecord = {
+    ...record,
+    title: fields.title.trim(),
+    oneLiner: fields.oneLiner.trim(),
+    description: fields.description.trim(),
+    members: fields.members.map((member) => ({ ...member })),
+    autoClearingPriceUsd: fields.autoClearingPriceUsd,
+    status: status === "ready" && changesContent ? "draft" : status,
+    reviewStartsAt: status === "ready" && changesContent ? null : record.reviewStartsAt,
+    updatedAt: new Date(now).toISOString(),
+  };
+  saveListingRecord(next);
+  return toListingDraft(next, now);
+}
+
+/** Sends a complete draft to quality checks; they pass after `LISTING_REVIEW_MS`. */
+export async function submitListing(id: string): Promise<ListingDraft> {
+  await delay();
+  const now = Date.now();
+  const record = requireListingRecord(id);
+  if (listingStatus(record, now) !== "draft") throw new ApiError("Only a draft can be submitted for review.", 409);
+  const problem = Object.values(listingErrors(record, { submitting: true }))[0];
+  if (problem) throw new ApiError(problem, 400);
+  const next: ListingRecord = {
+    ...record,
+    status: "in_review",
+    reviewStartsAt: now,
+    updatedAt: new Date(now).toISOString(),
+  };
+  saveListingRecord(next);
+  return toListingDraft(next, now);
+}
+
+/** Puts a ready listing on the catalog. */
+export async function publishListing(id: string): Promise<Listing> {
+  await delay();
+  const now = Date.now();
+  const record = requireListingRecord(id);
+  if (listingStatus(record, now) !== "ready") {
+    throw new ApiError("A listing goes live once its quality checks pass.", 409);
+  }
+  const at = new Date(now).toISOString();
+  const next: ListingRecord = { ...record, status: "live", publishedAt: record.publishedAt ?? at, updatedAt: at };
+  saveListingRecord(next);
+  return toOwnListing(next, now);
+}
+
+/** Takes a live listing off the catalog; it stays ready to go live again. */
+export async function unpublishListing(id: string): Promise<Listing> {
+  await delay();
+  const now = Date.now();
+  const record = requireListingRecord(id);
+  if (listingStatus(record, now) !== "live") throw new ApiError("This listing isn't on the catalog.", 409);
+  const next: ListingRecord = { ...record, status: "ready", updatedAt: new Date(now).toISOString() };
+  saveListingRecord(next);
+  return toOwnListing(next, now);
+}
+
+/** Deletes a listing; its assets stay in inventory. */
+export async function deleteListing(id: string): Promise<void> {
+  await delay();
+  requireListingRecord(id);
+  writeDb((db) => ({ ...db, listings: db.listings.filter((record) => record.id !== id) }));
 }
 
 export async function resetDemoData(): Promise<void> {

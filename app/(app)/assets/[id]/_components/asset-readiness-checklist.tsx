@@ -2,16 +2,21 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { RiCheckboxBlankCircleLine, RiCheckboxCircleFill } from "@remixicon/react";
+import { toast } from "sonner";
 
 import { LanguageBadges } from "@/components/inventory/language-badges";
+import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
+import { useCreateDraftListingsMutation } from "@/lib/fake-api/hooks";
 import type { InventoryAsset } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatDate, formatPrice } from "@/lib/format";
 import { assetEditHref } from "@/lib/inventory/routes";
 import { codebaseSourceLabel } from "@/lib/inventory/source";
-import { isAnalyzing } from "@/lib/inventory/status";
+import { isAnalyzing, isListable } from "@/lib/inventory/status";
+import { listingEditHref } from "@/lib/listings/routes";
 import { cn } from "@/lib/utils";
 
 type ItemKind = "required" | "optional";
@@ -156,6 +161,31 @@ function ChecklistSection({ group, assetId }: { group: ChecklistGroup; assetId: 
   );
 }
 
+/** Starts a draft listing holding just this asset and opens it for editing. */
+function ListForSaleButton({ asset }: { asset: InventoryAsset }) {
+  const router = useRouter();
+  const createDrafts = useCreateDraftListingsMutation();
+  const listable = isListable(asset);
+  const busy = createDrafts.isPending || createDrafts.isSuccess;
+
+  const createListing = async () => {
+    try {
+      const { ids } = await createDrafts.mutateAsync({ assetIds: [asset.id], mode: "all" });
+      router.push(listingEditHref(ids[0]!));
+    } catch (error) {
+      toast.error("Could not create listing", {
+        description: error instanceof Error ? error.message : undefined,
+      });
+    }
+  };
+
+  return (
+    <Button className="shrink-0" disabled={!listable || busy} onClick={() => void createListing()}>
+      List for sale
+    </Button>
+  );
+}
+
 /**
  * The owner's path to a sellable asset: its linked data and every required field, done or
  * missing, then the measured metadata that fills in once the data is read.
@@ -238,6 +268,7 @@ export function AssetReadinessChecklist({ asset }: { asset: InventoryAsset }) {
             ? "Everything buyers need is here."
             : "Fill in the required fields so buyers see the full picture."}
         </p>
+        <ListForSaleButton asset={asset} />
       </div>
     </section>
   );

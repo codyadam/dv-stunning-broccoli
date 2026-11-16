@@ -88,6 +88,19 @@ export type Listing = {
   dvQualityCertified: boolean;
   qcVerdicts: QcVerdict[];
   qcCheckedAt: string | null;
+  /** Set on listings the demo vendor composed from inventory; fixture listings have none. */
+  workspace: ListingWorkspace | null;
+};
+
+/**
+ * Where a vendor's listing is: composed in `draft`, checked in `in_review`, `ready` once checks
+ * pass, and `live` on the catalog once the vendor makes it so.
+ */
+export type ListingStatus = "draft" | "in_review" | "ready" | "live";
+
+export type ListingWorkspace = {
+  status: ListingStatus;
+  createdAt: string;
 };
 
 export type ListingSort = "recommended" | "recent" | "price_low" | "price_high";
@@ -150,6 +163,7 @@ export type RawDataMetadata = {
 export type AssetListingRef = {
   id: string;
   title: string;
+  status: ListingStatus;
 };
 
 export type InventoryAsset = {
@@ -189,6 +203,37 @@ export type AssetPatch = {
   contributors?: number;
   historyStart?: string;
   historyEnd?: string;
+};
+
+/** How a selection of assets becomes draft listings. */
+export type DraftListingMode = "per_asset" | "all";
+
+export type ListingDraftMember = {
+  asset: InventoryAsset;
+  /** This asset's price in the listing; null until the vendor sets one. */
+  priceUsd: number | null;
+};
+
+/** A vendor's own listing as its edit page reads it. */
+export type ListingDraft = {
+  id: string;
+  status: ListingStatus;
+  title: string;
+  oneLiner: string;
+  description: string;
+  members: ListingDraftMember[];
+  /** Offers at or above it are accepted without the vendor; null turns that off. */
+  autoClearingPriceUsd: number | null;
+  updatedAt: string;
+};
+
+/** The fields a vendor edits on a listing; omitted fields stay as they are. */
+export type ListingPatch = {
+  title?: string;
+  oneLiner?: string;
+  description?: string;
+  members?: { assetId: string; priceUsd: number | null }[];
+  autoClearingPriceUsd?: number | null;
 };
 
 export type InventoryGroup = {

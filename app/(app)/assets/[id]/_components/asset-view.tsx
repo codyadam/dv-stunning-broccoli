@@ -17,17 +17,22 @@ import { PageContainer } from "@/components/shell/page-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { StatusMarker } from "@/components/ui/status-marker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AssetListingRef, InventoryAsset } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatDate } from "@/lib/format";
 import { assetEditHref } from "@/lib/inventory/routes";
+import { isInListing, liveListings } from "@/lib/inventory/status";
 import { listingKindOfSku } from "@/lib/listings/asset-kinds";
+import { LISTING_STATUS_LABEL } from "@/lib/listings/listing-edit";
+import { LISTING_STATUS_MARKER, listingEditHref, listingHref } from "@/lib/listings/routes";
 import { topExtensions } from "@/lib/listings/listing-items";
 import { SESSION } from "@/lib/session";
 import { useNavbarBreadcrumbPageLabel } from "@/lib/shell/navbar-breadcrumb-context";
 
 /** Whether buyers can open the asset's page, and through which listings. */
-function AssetVisibilityBadge({ listings }: { listings: readonly AssetListingRef[] }) {
+function AssetVisibilityBadge({ listings: allListings }: { listings: readonly AssetListingRef[] }) {
+  const listings = liveListings(allListings);
   const published = listings.length > 0;
   return (
     <Tooltip>
@@ -176,7 +181,7 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
               <DeleteAssetButton
                 assetId={asset.id}
                 title={asset.title}
-                inListings={asset.listings.length > 0}
+                inListings={isInListing(asset)}
               />
             </CardContent>
           </Card>
@@ -193,9 +198,19 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
                     key={listing.id}
                     variant="secondary"
                     className="w-full justify-between gap-1"
-                    render={<Link href={`/listings/${listing.id}`} />}
+                    render={
+                      <Link
+                        href={listing.status === "live" ? listingHref(listing.id) : listingEditHref(listing.id)}
+                      />
+                    }
                   >
-                    <span className="min-w-0 truncate">{listing.title}</span>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <StatusMarker
+                        status={LISTING_STATUS_MARKER[listing.status]}
+                        label={LISTING_STATUS_LABEL[listing.status]}
+                      />
+                      <span className="min-w-0 truncate">{listing.title}</span>
+                    </span>
                     <RiArrowRightSLine data-icon="inline-end" />
                   </Button>
                 ))

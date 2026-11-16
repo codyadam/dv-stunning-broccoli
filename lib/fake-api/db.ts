@@ -3,7 +3,7 @@ import {
   INVENTORY_SPECS,
   type InventorySpec,
 } from "@/lib/fake-api/fixtures";
-import type { AssetSku, ForgeProvider, InventoryGroup } from "@/lib/fake-api/types";
+import type { AssetSku, ForgeProvider, InventoryGroup, ListingStatus } from "@/lib/fake-api/types";
 
 /** An inventory asset as stored; analysis status and listings are derived when read. */
 export type AssetRecord = {
@@ -22,14 +22,33 @@ export type AssetRecord = {
   analysisStartsAt: number | null;
 };
 
+/** A listing the demo vendor composed from inventory; fixture listings are not stored. */
+export type ListingRecord = {
+  id: string;
+  title: string;
+  oneLiner: string;
+  description: string;
+  /** Inventory assets in listing order, each with its price in this listing (null until set). */
+  members: { assetId: string; priceUsd: number | null }[];
+  autoClearingPriceUsd: number | null;
+  /** `in_review` turns `ready` once its quality checks finish; see `listingStatus`. */
+  status: ListingStatus;
+  /** When quality checks started (epoch ms); null before submission. */
+  reviewStartsAt: number | null;
+  createdAt: string;
+  updatedAt: string;
+  publishedAt: string | null;
+};
+
 type DbState = {
   version: typeof DB_VERSION;
   assets: AssetRecord[];
   groups: InventoryGroup[];
   connectedForges: ForgeProvider[];
+  listings: ListingRecord[];
 };
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORAGE_KEY = "datavendor-demo-db";
 
 function seedRecord(spec: InventorySpec): AssetRecord {
@@ -60,6 +79,7 @@ function seedState(): DbState {
     assets: INVENTORY_SPECS.map(seedRecord),
     groups: INVENTORY_GROUPS,
     connectedForges: [],
+    listings: [],
   };
 }
 

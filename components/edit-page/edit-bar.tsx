@@ -41,14 +41,20 @@ export function EditBar({
   backLabel,
   icon,
   title,
+  trailing,
   saveStatus,
+  footer,
 }: {
   backHref: string;
   /** Names the back destination, as the button's label and tooltip ("Back to asset"). */
   backLabel: string;
   icon?: React.ReactNode;
   title: React.ReactNode;
+  /** Controls after the save status, such as a stepper. */
+  trailing?: React.ReactNode;
   saveStatus: SaveStatusValue;
+  /** A panel tucked under the bar that sticks with it. */
+  footer?: React.ReactNode;
 }) {
   return (
     <div className="sticky top-3 z-20 -mx-4 flex flex-col">
@@ -72,7 +78,9 @@ export function EditBar({
         {icon}
         <div className="flex min-w-0 flex-1 items-center">{title}</div>
         <SaveStatusText status={saveStatus} />
+        {trailing}
       </div>
+      {footer}
     </div>
   );
 }

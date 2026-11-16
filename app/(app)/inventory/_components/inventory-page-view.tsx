@@ -8,6 +8,7 @@ import {
   INVENTORY_VIEW_TABS,
   INVENTORY_VIEW_VALUES,
 } from "@/app/(app)/inventory/_components/inventory-model";
+import { DraftListingsSection } from "@/app/(app)/inventory/_components/draft-listings-section";
 import { InventorySection } from "@/app/(app)/inventory/_components/inventory-view";
 import { MarketSearch } from "@/components/listings/market-browse-frame";
 import { AssetTypeBar } from "@/components/patterns/asset-type-bar";
@@ -60,6 +61,7 @@ export function InventoryPageView() {
         selectedIds={selectedIds}
         onSelectionChange={setSelectedIds}
       />
+      <DraftListingsSection />
     </PageContainer>
   );
 }

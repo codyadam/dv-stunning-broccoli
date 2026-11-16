@@ -877,14 +877,23 @@ const DATA_CHECKS: CheckSpec[] = [
   { id: "duplicates", title: "Duplicate detection", description: "Fewer than 1% of records are near-duplicates.", group: "Raw data", mandatory: false },
 ];
 
+/** The quality checks a listing of codebases and/or raw data runs, each with `statusOf`'s result. */
+export function checkVerdicts(
+  kinds: { hasCode: boolean; hasData: boolean },
+  statusOf: (check: CheckSpec) => QcVerdict["status"],
+): QcVerdict[] {
+  return [...CHECKS, ...(kinds.hasCode ? CODE_CHECKS : []), ...(kinds.hasData ? DATA_CHECKS : [])].map(
+    (check) => ({ ...check, status: statusOf(check) }),
+  );
+}
+
 /** The quality checks a listing reports, failing `failingCheck` when set. */
 export function listingVerdicts(spec: ListingSpec): QcVerdict[] {
-  const hasCode = spec.assets.some((asset) => asset.type === "repo");
-  const hasData = spec.assets.some((asset) => asset.type === "zip");
-  return [...CHECKS, ...(hasCode ? CODE_CHECKS : []), ...(hasData ? DATA_CHECKS : [])].map(
-    (check) => ({
-      ...check,
-      status: check.title === spec.failingCheck ? "failed" : "passed",
-    }),
+  return checkVerdicts(
+    {
+      hasCode: spec.assets.some((asset) => asset.type === "repo"),
+      hasData: spec.assets.some((asset) => asset.type === "zip"),
+    },
+    (check) => (check.title === spec.failingCheck ? "failed" : "passed"),
   );
 }

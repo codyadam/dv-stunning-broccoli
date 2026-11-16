@@ -5,9 +5,11 @@ import Link from "next/link";
 import {
   RiAddLine,
   RiArrowRightLine,
+  RiArrowUpSLine,
   RiCircleLine,
   RiDeleteBinLine,
   RiPencilLine,
+  RiShoppingCartLine,
 } from "@remixicon/react";
 
 import {
@@ -27,7 +29,13 @@ import {
   ComboboxList,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
-import type { InventoryGroup } from "@/lib/fake-api/types";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import type { DraftListingMode, InventoryGroup } from "@/lib/fake-api/types";
 import { cn } from "@/lib/utils";
 
 function MoveToGroupCombobox({
@@ -105,12 +113,42 @@ function MoveToGroupCombobox({
   );
 }
 
+function CreateListingDropdown({
+  selectedCount,
+  busy,
+  onCreateListing,
+}: {
+  selectedCount: number;
+  busy: boolean;
+  onCreateListing: (mode: DraftListingMode) => void;
+}) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        disabled={busy}
+        className={cn(buttonVariants({ variant: "secondary" }), "gap-1.5")}
+      >
+        <RiShoppingCartLine className="size-3.5" />
+        <span>List for sale</span>
+        <RiArrowUpSLine className="size-3.5 text-muted-foreground" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent side="top" sideOffset={6} align="start" className="min-w-56">
+        <DropdownMenuItem onClick={() => onCreateListing("per_asset")}>One listing per asset</DropdownMenuItem>
+        <DropdownMenuItem onClick={() => onCreateListing("all")}>
+          {selectedCount === 1 ? "One listing for this asset" : `One listing for all ${selectedCount} assets`}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function SelectionBar({
   selectedCount,
   groups,
   busy = false,
   onMoveToGroup,
   onCreateGroupAndMove,
+  onCreateListing,
   onClear,
   onDelete,
   editHref,
@@ -120,6 +158,8 @@ export function SelectionBar({
   busy?: boolean;
   onMoveToGroup: (groupId: string | null) => void;
   onCreateGroupAndMove: (name: string) => void;
+  /** Creates draft listings from the selection: one per asset, or one holding them all. */
+  onCreateListing: (mode: DraftListingMode) => void;
   onClear: () => void;
   /** Asks to delete the selected items. */
   onDelete: () => void;
@@ -138,6 +178,11 @@ export function SelectionBar({
                 Edit
               </Button>
             ) : null}
+            <CreateListingDropdown
+              selectedCount={selectedCount}
+              busy={busy}
+              onCreateListing={onCreateListing}
+            />
             <MoveToGroupCombobox
               groups={groups}
               busy={busy}

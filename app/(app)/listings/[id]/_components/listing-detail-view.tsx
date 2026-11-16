@@ -4,6 +4,10 @@ import Link from "next/link";
 
 import { ListingHeroTitle } from "@/app/(app)/listings/[id]/_components/listing-hero-title";
 import { ListingPurchasePanel } from "@/app/(app)/listings/[id]/_components/listing-purchase-panel";
+import {
+  ListingLifecycleCard,
+  ListingManageCard,
+} from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
 import { AssetDeck } from "@/components/listings/asset-deck";
 import { AssetKindTile } from "@/components/listings/asset-type-icon";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
@@ -40,6 +44,44 @@ function TagRow({ label, tags }: { label: string; tags: readonly string[] }) {
 /** What only the listing's owner sees: its status and the inventory assets it sells. */
 function ListingOwnerTools({ listing }: { listing: Listing }) {
   const assets = listing.assets.filter((asset) => asset.inventoryAssetId !== null);
+  const workspace = listing.workspace;
+  const inventoryCard = (
+    <Card aria-labelledby="listing-inventory-heading">
+      <CardHeader className="pb-2">
+        <CardTitle id="listing-inventory-heading">From your inventory</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {assets.length ? (
+          <ul className="-mx-2 flex flex-col">
+            {assets.map((asset) => (
+              <li key={asset.name}>
+                <Link
+                  href={`/assets/${asset.inventoryAssetId}`}
+                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent"
+                >
+                  <AssetKindTile kind={asset.kind} size="sm" />
+                  <span className="min-w-0 truncate font-medium">{asset.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-muted-foreground">No inventory assets.</p>
+        )}
+      </CardContent>
+    </Card>
+  );
+  if (workspace) {
+    return (
+      <OwnerBand>
+        <div className="flex min-w-0 flex-col gap-4">
+          <ListingLifecycleCard listing={listing} status={workspace.status} />
+          {inventoryCard}
+        </div>
+        <ListingManageCard listing={listing} status={workspace.status} />
+      </OwnerBand>
+    );
+  }
   return (
     <OwnerBand>
       <Card aria-labelledby="listing-status-heading">
@@ -51,30 +93,7 @@ function ListingOwnerTools({ listing }: { listing: Listing }) {
           <p className="text-muted-foreground">Listed since {formatDate(listing.postedAt)}.</p>
         </CardContent>
       </Card>
-      <Card aria-labelledby="listing-inventory-heading">
-        <CardHeader className="pb-2">
-          <CardTitle id="listing-inventory-heading">From your inventory</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {assets.length ? (
-            <ul className="-mx-2 flex flex-col">
-              {assets.map((asset) => (
-                <li key={asset.name}>
-                  <Link
-                    href={`/assets/${asset.inventoryAssetId}`}
-                    className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-                  >
-                    <AssetKindTile kind={asset.kind} size="sm" />
-                    <span className="min-w-0 truncate font-medium">{asset.name}</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No inventory assets.</p>
-          )}
-        </CardContent>
-      </Card>
+      {inventoryCard}
     </OwnerBand>
   );
 }
