@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { toast } from "sonner";
 
@@ -31,9 +31,10 @@ import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
-import type { InventoryAsset, ListingDraft, ListingPatch } from "@/lib/fake-api/types";
+import { LISTING_DESCRIPTION_MIN } from "@/lib/fake-api/qc";
+import type { InventoryAsset, ListingDraft, ListingPatch, QcCheck } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatPrice } from "@/lib/format";
-import { assetHref } from "@/lib/inventory/routes";
+import { assetEditHref, assetHref } from "@/lib/inventory/routes";
 import { listingKindOfSku } from "@/lib/listings/asset-kinds";
 import {
   AUTO_CLEARING_MIN_RATIO,
@@ -47,7 +48,8 @@ import {
   type ListingFields,
 } from "@/lib/listings/listing-edit";
 import { clearOpenSet, useOpenSet } from "@/lib/listings/open-set";
-import { listingEditHref, listingHref } from "@/lib/listings/routes";
+import { LISTING_EDIT_FOCUS_PARAM, listingEditHref, listingHref } from "@/lib/listings/routes";
+import { isIssue } from "@/lib/qc/runs";
 import { useNavbarBreadcrumbPageLabel } from "@/lib/shell/navbar-breadcrumb-context";
 
 /** Raw text per control, so a half-typed price stays as typed. */
@@ -226,6 +228,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   const title = listingDisplayTitle(listing.title);
   useNavbarBreadcrumbPageLabel(title);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const update = useUpdateListingMutation();
   const submit = useSubmitListingMutation();
   const ownListings = useOwnListingsQuery();
@@ -253,6 +256,18 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
 
   const status = listing.status;
   const contentLocked = status === "in_review" || status === "live";
+  const submittable = status === "draft" || status === "needs_fixes";
+  const run = status === "needs_fixes" ? listing.latestRun : null;
+  const runIssues = run?.checks.filter((check) => check.mandatory && isIssue(check)) ?? [];
+  const listingIssue = (key: string): QcCheck | undefined =>
+    runIssues.find((check) => check.fix?.kind === "listing" && check.fix.field === key);
+  const assetIssues = (assetId: string): QcCheck[] =>
+    runIssues.filter((check) => check.fix?.kind === "asset" && check.fix.assetId === assetId);
+
+  const focus = searchParams.get(LISTING_EDIT_FOCUS_PARAM);
+  React.useEffect(() => {
+    if (focus) reveal(focus);
+  }, [focus, reveal]);
   const changed = changedKeys(draft, baseline);
   const dirty = changed.length > 0;
   const saving = update.isPending;
@@ -391,6 +406,20 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
           ? { kind: "unsaved", fields: changed.map((key) => ({ key, label: labelOf(key) })) }
           : status === "in_review"
             ? { kind: "locked", message: "Quality checks are still running." }
+            : run
+              ? {
+                  kind: "qc_issues",
+                  runNumber: run.number,
+                  fields: runIssues.flatMap((check) => {
+                    const fix = check.fix;
+                    if (fix?.kind === "listing") return [{ key: fix.field, label: labelOf(fix.field) }];
+                    if (fix?.kind === "asset") {
+                      const asset = assetsById.get(fix.assetId);
+                      return [{ key: memberPriceKey(fix.assetId), label: `Description of ${asset?.title ?? "an asset"}` }];
+                    }
+                    return [];
+                  }),
+                }
             : status === "live"
               ? {
                   kind: "locked",
@@ -404,7 +433,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   const rowProps = (key: string) => ({
     field: key,
     edited: changed.includes(key),
-    error: errors[key] ?? null,
+    error: errors[key] ?? (changed.includes(key) ? null : (listingIssue(key)?.summary ?? null)),
   });
   const copyLocked = saving || contentLocked;
   const autoClearing = priceValue(draft.auto_clearing);
@@ -462,7 +491,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
           stacked
           label={<label htmlFor="listing-description">Description</label>}
           marks={<span className="text-xs font-normal text-muted-foreground">Required</span>}
-          description="Markdown works."
+          description={`Markdown works. Quality checks look for at least ${LISTING_DESCRIPTION_MIN} characters; this has ${draft.description.trim().length}.`}
           control={
             <Textarea
               id="listing-description"
@@ -521,15 +550,30 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
                 </>
               }
               description={
-                facts.length ? (
-                  <span className="mt-1 flex flex-wrap gap-1">
-                    {facts.map((fact) => (
-                      <Badge key={fact} variant="outline" size="sm">
-                        {fact}
-                      </Badge>
-                    ))}
-                  </span>
-                ) : null
+                <>
+                  {facts.length ? (
+                    <span className="mt-1 flex flex-wrap gap-1">
+                      {facts.map((fact) => (
+                        <Badge key={fact} variant="outline" size="sm">
+                          {fact}
+                        </Badge>
+                      ))}
+                    </span>
+                  ) : null}
+                  {assetIssues(asset.id).map((check) => (
+                    <span key={check.id} className="mt-1.5 block text-destructive">
+                      {check.summary}{" "}
+                      {check.fix?.kind === "asset" ? (
+                        <Link
+                          href={assetEditHref(check.fix.assetId, check.fix.field)}
+                          className="font-medium text-foreground underline underline-offset-2"
+                        >
+                          Edit the asset
+                        </Link>
+                      ) : null}
+                    </span>
+                  ))}
+                </>
               }
               control={
                 <>
@@ -599,7 +643,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         />
       </EditSection>
 
-      {status === "draft" ? (
+      {submittable ? (
         <section
           {...editFieldMarker("submit", "ownership")}
           aria-labelledby="listing-submit-heading"
@@ -607,10 +651,12 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         >
           <div className="flex flex-col gap-1">
             <h2 id="listing-submit-heading" className="text-heading">
-              Submit for review
+              {run ? "Resubmit for review" : "Submit for review"}
             </h2>
             <p className="text-sm text-muted-foreground">
-              Quality checks run on the listing and its assets. Once they pass, you can make it live.
+              {run
+                ? `Fixed the issues from Run ${run.number}? Resubmitting starts Run ${run.number + 1} on the listing and its assets.`
+                : "Quality checks run on the listing and its assets. Once the required ones pass, you can make it live."}
             </p>
           </div>
           <label className="flex items-center gap-2.5 text-sm">
@@ -631,7 +677,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
               disabled={dirty || submit.isPending || submit.isSuccess}
               onClick={() => void submitForReview()}
             >
-              {submit.isPending ? "Submitting" : "Submit for review"}
+              {submit.isPending ? "Submitting" : run ? "Resubmit for review" : "Submit for review"}
             </Button>
             {dirty ? <p className="text-sm text-muted-foreground">Save your changes before submitting.</p> : null}
           </div>

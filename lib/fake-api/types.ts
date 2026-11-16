@@ -42,6 +42,39 @@ export type QcVerdict = {
   status: QcVerdictStatus;
 };
 
+/** Where one check of a quality-check run is: waiting its turn, running, or its outcome. */
+export type QcCheckStatus = "queued" | "running" | "passed" | "failed" | "skipped";
+
+/** A finished check: `skipped` means the snapshot had nothing to grade it on. */
+export type QcOutcome = "passed" | "failed" | "skipped";
+
+/** Where the vendor fixes a check: a field of the listing, or of one of its inventory assets. */
+export type QcFix = { kind: "listing"; field: string } | { kind: "asset"; assetId: string; field: string };
+
+/** One check of a run, on the listing as a whole or on one of its assets. */
+export type QcCheck = {
+  id: string;
+  label: string;
+  assetName: string | null;
+  assetKind: ListingAssetKind | null;
+  /** Required checks gate publishing; the others decide the verified badge. */
+  mandatory: boolean;
+  status: QcCheckStatus;
+  /** What the check found, once it finishes. */
+  summary: string;
+  fix: QcFix | null;
+};
+
+/** One submission's quality checks; runs are numbered from 1 per listing. */
+export type QcRun = {
+  id: string;
+  number: number;
+  status: "running" | "completed";
+  startedAt: string;
+  completedAt: string | null;
+  checks: QcCheck[];
+};
+
 type BaseListingAsset = {
   name: string;
   /** The inventory asset behind this listing asset; its page opens from the listing. */
@@ -88,15 +121,18 @@ export type Listing = {
   dvQualityCertified: boolean;
   qcVerdicts: QcVerdict[];
   qcCheckedAt: string | null;
+  /** Quality-check runs, newest first; only the demo vendor sees its own. */
+  qcRuns: QcRun[];
   /** Set on listings the demo vendor composed from inventory; fixture listings have none. */
   workspace: ListingWorkspace | null;
 };
 
 /**
- * Where a vendor's listing is: composed in `draft`, checked in `in_review`, `ready` once checks
- * pass, and `live` on the catalog once the vendor makes it so.
+ * Where a vendor's listing is: composed in `draft`, checked in `in_review`, back with the vendor
+ * in `needs_fixes` when a required check fails, `ready` once they all pass, and `live` on the
+ * catalog once the vendor makes it so.
  */
-export type ListingStatus = "draft" | "in_review" | "ready" | "live";
+export type ListingStatus = "draft" | "in_review" | "needs_fixes" | "ready" | "live";
 
 export type ListingWorkspace = {
   status: ListingStatus;
@@ -225,6 +261,7 @@ export type ListingDraft = {
   /** Offers at or above it are accepted without the vendor; null turns that off. */
   autoClearingPriceUsd: number | null;
   updatedAt: string;
+  latestRun: QcRun | null;
 };
 
 /** The fields a vendor edits on a listing; omitted fields stay as they are. */

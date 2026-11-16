@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 const TONE: Readonly<Record<ListingStatus, string>> = {
   draft: "border-border bg-muted",
   in_review: "border-tone-warning/30 bg-tone-warning-surface",
+  needs_fixes: "border-amber-500/30 bg-amber-500/10",
   ready: "border-tone-info/30 bg-tone-info-surface",
   live: "border-tone-success/30 bg-tone-success-surface",
 };
@@ -23,6 +24,7 @@ export type StatusPanelState =
   | { kind: "save_failed"; fields: StatusPanelField[] }
   | { kind: "unsaved"; fields: StatusPanelField[] }
   | { kind: "locked"; message: string }
+  | { kind: "qc_issues"; runNumber: number; fields: StatusPanelField[] }
   | { kind: "ready_for_review" }
   | { kind: "saved" };
 
@@ -89,6 +91,25 @@ export function ListingEditStatusPanel({
       break;
     case "locked":
       message = state.message;
+      break;
+    case "qc_issues":
+      message =
+        state.fields.length > 0 ? (
+          <>
+            Run {state.runNumber} found issues in <FieldLinks fields={state.fields} onReveal={onReveal} />. Fix
+            them, then{" "}
+            <button
+              type="button"
+              className="font-medium underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
+              onClick={() => onReveal("submit")}
+            >
+              resubmit
+            </button>
+            .
+          </>
+        ) : (
+          `Run ${state.runNumber} found issues. Fix them, then resubmit.`
+        );
       break;
     case "ready_for_review":
       message = (
