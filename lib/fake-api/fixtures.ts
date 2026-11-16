@@ -794,6 +794,57 @@ export const INVENTORY_SPECS: InventorySpec[] = [
   },
 ];
 
+/** The domains a vendor can tag an asset with. */
+export const DOMAIN_OPTIONS: readonly string[] = [
+  "AI/ML",
+  "Coding/SWE",
+  "Computer Use",
+  "Data & Analytics",
+  "Design & Creative Tools",
+  "Developer Tooling",
+  "E-Commerce & Marketplaces",
+  "Education",
+  "Enterprise SaaS",
+  "Enterprise Tool Use",
+  "Finance",
+  "Financial Services",
+  "Fintech",
+  "Food & Beverage",
+  "Gaming",
+  "Health & Fitness",
+  "Healthcare & Life Sciences",
+  "HR & Workforce",
+  "Legal & Compliance",
+  "Marketing & Sales",
+  "MCP Integrations",
+  "Media & Entertainment",
+  "ML Research",
+  "Productivity",
+  "Real Estate & Construction",
+  "Security",
+  "Sustainability & Environment",
+  "Telecommunications & Utilities",
+  "Transportation & Logistics",
+  "Travel & Hospitality",
+];
+
+/** The languages a vendor can set as a codebase's primary languages. */
+export const LANGUAGE_OPTIONS: readonly string[] = [
+  "C#",
+  "C++",
+  "Dart",
+  "Go",
+  "Java",
+  "JavaScript",
+  "Kotlin",
+  "PHP",
+  "Python",
+  "Ruby",
+  "Rust",
+  "Swift",
+  "TypeScript",
+];
+
 /** Repositories offered once a git host is connected. */
 export const FORGE_REPOSITORIES: ForgeRepository[] = [
   { provider: "github", fullName: "kettlewell/harbor-billing", language: "TypeScript", updatedAt: "2026-11-01T12:00:00Z" },

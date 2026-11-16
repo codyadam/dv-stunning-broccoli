@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { RiArrowRightSLine, RiGlobalLine, RiLockLine } from "@remixicon/react";
+import { RiArrowRightSLine, RiGlobalLine, RiLockLine, RiPencilLine } from "@remixicon/react";
 
 import { AssetReadinessChecklist } from "@/app/(app)/assets/[id]/_components/asset-readiness-checklist";
 import { DeleteAssetButton } from "@/app/(app)/assets/[id]/_components/delete-asset-button";
@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AssetListingRef, InventoryAsset } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatDate } from "@/lib/format";
+import { assetEditHref } from "@/lib/inventory/routes";
 import { listingKindOfSku } from "@/lib/listings/asset-kinds";
 import { topExtensions } from "@/lib/listings/listing-items";
 import { SESSION } from "@/lib/session";
@@ -164,6 +165,14 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
               <MetaRow label="Visibility">
                 <AssetVisibilityBadge listings={asset.listings} />
               </MetaRow>
+              <Button
+                variant="secondary"
+                className="w-full"
+                render={<Link href={assetEditHref(asset.id)} />}
+              >
+                <RiPencilLine data-icon="inline-start" />
+                Edit asset
+              </Button>
               <DeleteAssetButton
                 assetId={asset.id}
                 title={asset.title}

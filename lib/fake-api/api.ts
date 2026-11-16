@@ -10,6 +10,7 @@ import {
 import { codebaseStructure, rawDataStructure } from "@/lib/fake-api/structure";
 import type {
   AnalysisStatus,
+  AssetPatch,
   ForgeProvider,
   ForgeRepository,
   InventoryAsset,
@@ -438,6 +439,65 @@ export async function importRepositories(
   }));
   writeDb((db) => ({ ...db, assets: [...records, ...db.assets] }));
   return records.map((record) => toInventoryAsset(record, now));
+}
+
+/** At most this many domains per asset. */
+export const DOMAIN_TAGS_MAX = 4;
+
+const METRIC_PATCH_KEYS = ["linesOfCode", "commits", "contributors", "historyStart", "historyEnd"] as const;
+
+/** Why `patch` can't be saved on `record`, or null when it can. */
+function assetPatchProblem(record: AssetRecord, patch: AssetPatch): string | null {
+  if (patch.title !== undefined && patch.title.trim() === "") return "Title can't be empty.";
+  if (patch.priceUsd != null && (!Number.isFinite(patch.priceUsd) || patch.priceUsd < 0)) {
+    return "Asking price can't be negative.";
+  }
+  if (patch.domainTags && patch.domainTags.length > DOMAIN_TAGS_MAX) {
+    return `Pick up to ${DOMAIN_TAGS_MAX} domains.`;
+  }
+  const editsMetrics = METRIC_PATCH_KEYS.some((key) => patch[key] !== undefined);
+  if (patch.languages === undefined && !editsMetrics) return null;
+  if (!record.codebase) return "Only codebases have languages and repository metrics.";
+  if (patch.languages && patch.languages.length === 0) return "Pick at least one language.";
+  if (editsMetrics && record.codebase.channel !== "upload") {
+    return "Repository metrics are measured from the connected repository.";
+  }
+  for (const count of [patch.linesOfCode, patch.commits, patch.contributors]) {
+    if (count !== undefined && (!Number.isInteger(count) || count < 1)) {
+      return "Counts must be whole numbers of at least 1.";
+    }
+  }
+  const start = patch.historyStart ?? record.codebase.historyStart;
+  const end = patch.historyEnd ?? record.codebase.historyEnd;
+  if (Number.isNaN(Date.parse(start)) || Number.isNaN(Date.parse(end))) return "Enter valid dates.";
+  if (start > end) return "History can't end before it starts.";
+  return null;
+}
+
+/** Saves a vendor's edits to an asset; measured fields only change on uploaded codebases. */
+export async function updateAsset(id: string, patch: AssetPatch): Promise<InventoryAsset> {
+  await delay();
+  const record = requireRecord(id);
+  const now = Date.now();
+  if (analysisStatus(record, now) !== "complete" && Object.keys(patch).some((key) => key !== "title")) {
+    throw new ApiError("Wait for the analysis to finish before editing this asset.", 409);
+  }
+  const problem = assetPatchProblem(record, patch);
+  if (problem) throw new ApiError(problem, 400);
+  const { title, description, domainTags, priceUsd, ...codebasePatch } = patch;
+  const next: AssetRecord = {
+    ...record,
+    ...(title !== undefined ? { title: title.trim() } : {}),
+    ...(description !== undefined ? { description: description?.trim() || null } : {}),
+    ...(domainTags !== undefined ? { domainTags } : {}),
+    ...(priceUsd !== undefined ? { priceUsd } : {}),
+    codebase: record.codebase ? { ...record.codebase, ...codebasePatch } : null,
+  };
+  writeDb((db) => ({
+    ...db,
+    assets: db.assets.map((candidate) => (candidate.id === id ? next : candidate)),
+  }));
+  return toInventoryAsset(next, now);
 }
 
 /** Deletes assets; an asset held by a listing has to leave the listing first. */

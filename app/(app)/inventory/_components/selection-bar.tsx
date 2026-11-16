@@ -1,7 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { RiAddLine, RiArrowRightLine, RiCircleLine, RiDeleteBinLine } from "@remixicon/react";
+import Link from "next/link";
+import {
+  RiAddLine,
+  RiArrowRightLine,
+  RiCircleLine,
+  RiDeleteBinLine,
+  RiPencilLine,
+} from "@remixicon/react";
 
 import {
   inventoryGroupChoiceKey,
@@ -106,6 +113,7 @@ export function SelectionBar({
   onCreateGroupAndMove,
   onClear,
   onDelete,
+  editHref,
 }: {
   selectedCount: number;
   groups: readonly InventoryGroup[];
@@ -115,6 +123,8 @@ export function SelectionBar({
   onClear: () => void;
   /** Asks to delete the selected items. */
   onDelete: () => void;
+  /** The edit page of the one selected item; null when several are selected. */
+  editHref: string | null;
 }) {
   return (
     <FloatingActionOverlay>
@@ -122,6 +132,12 @@ export function SelectionBar({
         selectedCount={selectedCount}
         extra={
           <>
+            {editHref ? (
+              <Button variant="secondary" disabled={busy} render={<Link href={editHref} />}>
+                <RiPencilLine className="size-3.5" />
+                Edit
+              </Button>
+            ) : null}
             <MoveToGroupCombobox
               groups={groups}
               busy={busy}

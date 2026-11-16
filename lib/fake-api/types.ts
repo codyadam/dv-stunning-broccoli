@@ -174,6 +174,23 @@ export type InventoryAsset = {
   structure: AssetPreviewSourceNode[];
 };
 
+/**
+ * The fields a vendor edits on an asset; omitted fields stay as they are. Repository metrics are
+ * editable only on uploaded codebases, since a connected git host measures them.
+ */
+export type AssetPatch = {
+  title?: string;
+  description?: string | null;
+  domainTags?: string[];
+  priceUsd?: number | null;
+  languages?: string[];
+  linesOfCode?: number;
+  commits?: number;
+  contributors?: number;
+  historyStart?: string;
+  historyEnd?: string;
+};
+
 export type InventoryGroup = {
   id: string;
   name: string;

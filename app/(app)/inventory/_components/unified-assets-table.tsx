@@ -19,14 +19,11 @@ import { Badge } from "@/components/ui/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { InventoryAsset } from "@/lib/fake-api/types";
 import { formatBytes, formatPrice, formatRelativeTime } from "@/lib/format";
+import { assetHref } from "@/lib/inventory/routes";
 import { getAssetKindLabel, listingKindOfSku } from "@/lib/listings/asset-kinds";
 import { SOURCE_CHANNEL_LABEL } from "@/lib/sources/channels";
 
 type InventoryColumn = SmartViewColumn<InventoryAsset>;
-
-function assetHref(id: string): string {
-  return `/assets/${id}`;
-}
 
 function countCell(value: number | null | undefined): React.ReactNode {
   return value != null ? value.toLocaleString("en-US") : "—";

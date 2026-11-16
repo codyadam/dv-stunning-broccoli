@@ -46,6 +46,7 @@ import {
 } from "@/lib/fake-api/hooks";
 import type { InventoryAsset, InventoryGroup, InventorySort } from "@/lib/fake-api/types";
 import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
+import { assetEditHref } from "@/lib/inventory/routes";
 import { useSourcePickerParams } from "@/lib/sources/source-picker-params";
 
 type InventorySectionProps = {
@@ -328,6 +329,7 @@ function InventoryAssets({
         onMoveToGroup={(groupId) => void handleMoveToGroup(groupId)}
         onCreateGroupAndMove={(name) => void handleCreateGroupAndMove(name)}
         onClear={clearSelection}
+        editHref={selectedAssets.length === 1 ? assetEditHref(selectedAssets[0]!.id) : null}
       />
 
       <CreateGroupDialog

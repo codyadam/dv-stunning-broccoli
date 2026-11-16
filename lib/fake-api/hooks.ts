@@ -10,6 +10,7 @@ import {
 
 import * as api from "@/lib/fake-api/api";
 import type {
+  AssetPatch,
   ForgeProvider,
   ForgeRepository,
   InventoryAsset,
@@ -125,6 +126,17 @@ export function useConnectForgeMutation() {
   return useMutation({
     mutationFn: (provider: ForgeProvider) => api.connectForge(provider),
     onSuccess: (connected) => queryClient.setQueryData(queryKeys.forgeConnections, connected),
+  });
+}
+
+export function useUpdateAssetMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, patch }: { id: string; patch: AssetPatch }) => api.updateAsset(id, patch),
+    onSuccess: (asset) => {
+      queryClient.setQueryData(queryKeys.asset(asset.id), asset);
+      return queryClient.invalidateQueries({ queryKey: queryKeys.inventoryAll });
+    },
   });
 }
 

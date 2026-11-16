@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { RiCheckboxBlankCircleLine, RiCheckboxCircleFill } from "@remixicon/react";
 
 import { LanguageBadges } from "@/components/inventory/language-badges";
@@ -8,6 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Spinner } from "@/components/ui/spinner";
 import type { InventoryAsset } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatDate, formatPrice } from "@/lib/format";
+import { assetEditHref } from "@/lib/inventory/routes";
 import { codebaseSourceLabel } from "@/lib/inventory/source";
 import { isAnalyzing } from "@/lib/inventory/status";
 import { cn } from "@/lib/utils";
@@ -72,9 +74,32 @@ function measuredItems(asset: InventoryAsset): ChecklistItem[] {
   return [];
 }
 
-function ChecklistRow({ item, kind }: { item: ChecklistItem; kind: ItemKind }) {
-  return (
-    <div className="flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50">
+/** Checklist keys the edit page has a field for. */
+const EDITABLE_KEYS = new Set([
+  "description",
+  "price_usd",
+  "domain_tags",
+  "languages",
+  "lines_of_code",
+  "history_start",
+  "history_end",
+  "commits",
+  "contributors",
+]);
+
+function ChecklistRow({
+  item,
+  kind,
+  href,
+}: {
+  item: ChecklistItem;
+  kind: ItemKind;
+  /** The edit page, focused on this item's field. */
+  href: string | null;
+}) {
+  const className = "flex items-center gap-3 rounded-md px-2 py-2 hover:bg-muted/50";
+  const content = (
+    <>
       {item.done ? (
         <RiCheckboxCircleFill className="size-4 shrink-0 text-tone-success" aria-label="Done" />
       ) : (
@@ -96,11 +121,20 @@ function ChecklistRow({ item, kind }: { item: ChecklistItem; kind: ItemKind }) {
           </span>
         )}
       </span>
-    </div>
+    </>
+  );
+  if (!href) return <div className={className}>{content}</div>;
+  return (
+    <Link
+      href={href}
+      className={cn(className, "outline-none focus-visible:ring-2 focus-visible:ring-ring/30")}
+    >
+      {content}
+    </Link>
   );
 }
 
-function ChecklistSection({ group }: { group: ChecklistGroup }) {
+function ChecklistSection({ group, assetId }: { group: ChecklistGroup; assetId: string | null }) {
   const done = group.items.filter((entry) => entry.done).length;
   return (
     <div className="flex flex-col border-t border-border p-2 first:border-t-0">
@@ -111,7 +145,12 @@ function ChecklistSection({ group }: { group: ChecklistGroup }) {
         </span>
       </h3>
       {group.items.map((entry) => (
-        <ChecklistRow key={entry.key} item={entry} kind={group.kind} />
+        <ChecklistRow
+          key={entry.key}
+          item={entry}
+          kind={group.kind}
+          href={assetId && EDITABLE_KEYS.has(entry.key) ? assetEditHref(assetId, entry.key) : null}
+        />
       ))}
     </div>
   );
@@ -190,7 +229,7 @@ export function AssetReadinessChecklist({ asset }: { asset: InventoryAsset }) {
       </div>
       <div className="flex flex-col">
         {groups.map((group) => (
-          <ChecklistSection key={group.id} group={group} />
+          <ChecklistSection key={group.id} group={group} assetId={processing ? null : asset.id} />
         ))}
       </div>
       <div className="flex items-center justify-between gap-3 border-t border-border p-4">
