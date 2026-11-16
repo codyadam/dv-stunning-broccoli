@@ -17,7 +17,6 @@ import { useCodebaseActivityQuery, type CodebaseActivitySource } from "@/lib/fak
 
 /** The file tree in a widget card, no taller than the activity widgets. */
 type CodebaseFiles = {
-  meta: ReactNode;
   actions?: ReactNode;
   /** The file tree; null while there is none, which shows a one-line note instead. */
   body: ReactNode | null;
@@ -64,12 +63,12 @@ export function AssetViewTabs({
       onValueChange={(next: AssetViewKey) => setChoice({ resetKey, view: next })}
       className="flex flex-col gap-3"
     >
-      <TabsPrimitive.List className="flex w-fit flex-wrap items-center gap-1">
+      <TabsPrimitive.List className="scrollbar-none flex max-w-full items-center gap-0.5 overflow-x-auto">
         {views.map((view) => (
           <TabsPrimitive.Tab
             key={view.value}
             value={view.value}
-            className="group/tab relative h-10 rounded-lg pr-4 pl-1.5 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 data-active:text-foreground"
+            className="group/tab relative h-9 shrink-0 rounded-lg pr-2.5 pl-1 text-sm font-medium text-muted-foreground transition-colors duration-150 ease-out outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/30 data-active:text-foreground"
           >
             {selected === view.value && (
               <span
@@ -77,7 +76,7 @@ export function AssetViewTabs({
                 aria-hidden
               />
             )}
-            <span className="relative flex items-center gap-2.5">
+            <span className="relative flex items-center gap-1.5 whitespace-nowrap">
               <AssetViewTile view={view.value} />
               {view.label}
             </span>
@@ -98,8 +97,8 @@ export function AssetViewTabs({
 }
 
 /**
- * A codebase asset's file tree and the activity buyers see, behind tabs, after an
- * optional leading metadata view and before any trailing views (quality). Which activity tabs
+ * A codebase asset's file tree and the activity buyers see, behind tabs, before any
+ * trailing views (quality). Which activity tabs
  * exist is only known once both reads settle, so a placeholder stands in until then, and tabs
  * without a payload are left out.
  */
@@ -107,13 +106,11 @@ export function AssetCodebaseViews({
   resetKey,
   activity,
   files,
-  metadata,
   trailing = [],
 }: {
   resetKey: string;
   activity: CodebaseActivitySource;
   files: CodebaseFiles;
-  metadata?: ReactNode;
   trailing?: readonly AssetViewTab[];
 }) {
   const activityQuery = useCodebaseActivityQuery(activity);
@@ -123,7 +120,6 @@ export function AssetCodebaseViews({
   const effort = activityQuery.data?.effort ?? null;
 
   const views: AssetViewTab[] = [
-    ...(metadata ? [{ value: "metadata" as const, label: "Metadata", node: metadata }] : []),
     {
       value: "files",
       label: "Files",
@@ -134,7 +130,6 @@ export function AssetCodebaseViews({
           </p>
         ) : (
           <Widget
-            meta={files.meta}
             actions={files.actions}
             className="scroll-fade scrollbar-thin overflow-y-auto p-1.5"
             fit

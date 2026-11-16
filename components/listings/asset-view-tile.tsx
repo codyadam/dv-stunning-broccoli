@@ -2,7 +2,7 @@ import { useId } from "react";
 
 import { cn } from "@/lib/utils";
 
-export type AssetViewKey = "metadata" | "files" | "quality" | "models" | "timelapse" | "effort";
+export type AssetViewKey = "files" | "quality" | "models" | "timelapse" | "effort";
 
 const TILE_SIZE = 28;
 /** 4px: the tab's rounded-lg minus the 6px between the tile and the tab's edge. */
@@ -32,7 +32,6 @@ export function AssetViewTile({ view }: { view: AssetViewKey }) {
         rx={TILE_RADIUS}
         className={cn(BOX, MOTION)}
       />
-      {view === "metadata" && <MetadataGlyph />}
       {view === "files" && <FilesGlyph />}
       {view === "quality" && <QualityGlyph />}
       {view === "models" && <ModelsGlyph />}
@@ -40,42 +39,6 @@ export function AssetViewTile({ view }: { view: AssetViewKey }) {
       {view === "effort" && <EffortGlyph />}
     </svg>
   );
-}
-
-const ROWS = [
-  { y: 7, width: 5.5, delay: "delay-0" },
-  { y: 11, width: 3.5, delay: "delay-40" },
-  { y: 15, width: 4.5, delay: "delay-80" },
-];
-
-/** Label and value rows; the values stretch, one after another, on hover. */
-function MetadataGlyph() {
-  return ROWS.map((row) => (
-    <g key={row.y}>
-      <rect
-        x="6"
-        y={row.y}
-        width="3"
-        height="2"
-        rx="1"
-        fillOpacity="0.55"
-        className={cn(GLYPH, MOTION)}
-      />
-      <rect
-        x="10.5"
-        y={row.y}
-        width={row.width}
-        height="2"
-        rx="1"
-        className={cn(
-          GLYPH,
-          MOTION,
-          row.delay,
-          "origin-left motion-safe:group-hover/tab:scale-x-[1.35]",
-        )}
-      />
-    </g>
-  ));
 }
 
 /** A check mark that draws itself on hover and when its tab becomes active. */

@@ -4,7 +4,6 @@ import { useLayoutEffect, useRef, useState, type RefObject } from "react";
 import Link from "next/link";
 import { RiArrowRightUpLine, RiSearchLine } from "@remixicon/react";
 
-import { LanguageBadges } from "@/components/inventory/language-badges";
 import { AssetDetailHeader, AssetDetailViews } from "@/components/listings/asset-detail";
 import { AssetPreviewTree } from "@/components/listings/asset-preview-tree";
 import { AssetKindTile } from "@/components/listings/asset-type-icon";
@@ -89,7 +88,17 @@ function ListingAssetDetail({ listing, item }: { listing: Listing; item: Listing
       <AssetDetailViews
         resetKey={item.key}
         codebase={asset.kind === "repo" ? { listingId: listing.id, assetName: asset.name } : null}
-        facts={item.facts.flatMap(({ label, value }) => (value == null ? [] : [{ label, value }]))}
+        facts={[
+          ...(asset.kind === "repo" && asset.languages.length
+            ? [
+                {
+                  label: asset.languages.length === 1 ? "Language" : "Languages",
+                  value: asset.languages.join(", "),
+                },
+              ]
+            : []),
+          ...item.facts.flatMap(({ label, value }) => (value == null ? [] : [{ label, value }])),
+        ]}
         tree={
           asset.structure.length ? (
             <AssetPreviewTree
@@ -102,13 +111,6 @@ function ListingAssetDetail({ listing, item }: { listing: Listing; item: Listing
               mode="full"
             />
           ) : null
-        }
-        filesMeta={
-          asset.kind === "repo" && asset.languages.length ? (
-            <LanguageBadges languages={asset.languages} />
-          ) : (
-            item.caption
-          )
         }
         quality={{
           verdicts: listing.qcVerdicts.filter(
@@ -155,9 +157,6 @@ function useListRowsCap(
   return cap;
 }
 
-/** Anchor for the hero's asset count, which scrolls here. */
-export const LISTING_ASSETS_ID = "listing-assets";
-
 /**
  * The listing's assets. A single asset fills the card; several list on the left, filtered by
  * kind and search, with the selected one's detail scrolling on the right. `?asset=` names the
@@ -180,9 +179,8 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
   if (items.length === 1 && onlyItem) {
     return (
       <section
-        id={LISTING_ASSETS_ID}
         aria-label="Asset"
-        className="scroll-mt-6 flex flex-col overflow-hidden rounded-md border border-border bg-card lg:max-h-[clamp(616px,calc(100dvh-20.5rem),776px)]"
+        className="flex flex-col overflow-hidden rounded-md border border-border bg-card lg:max-h-[clamp(616px,calc(100dvh-20.5rem),776px)]"
       >
         <div className="scroll-fade scrollbar-thin min-h-0 p-6 lg:overflow-y-auto">
           <ListingAssetDetail listing={listing} item={onlyItem} />
@@ -195,13 +193,11 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
     (item) => (kind === "all" || item.kind === kind) && listingItemMatches(item, query),
   );
   const selected = visible.find((item) => item.key === selectedKey) ?? visible[0] ?? null;
-  const [onlyGroup] = groups;
 
   return (
     <section
-      id={LISTING_ASSETS_ID}
       aria-label="Assets"
-      className="scroll-mt-6 flex flex-col overflow-hidden rounded-md border border-border bg-card"
+      className="flex flex-col overflow-hidden rounded-md border border-border bg-card"
     >
       <div className="flex flex-col gap-3 border-b border-border p-3 md:flex-row md:items-center">
         <span className="shrink-0 text-sm font-medium tabular-nums">{items.length} assets</span>
@@ -230,8 +226,6 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
                 />
               ))}
             </div>
-          ) : onlyGroup ? (
-            <KindChip active kind={onlyGroup.kind} label={onlyGroup.label} count={onlyGroup.count} />
           ) : null}
         </div>
         <InputGroup className="md:w-56">

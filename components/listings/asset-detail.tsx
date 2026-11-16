@@ -47,36 +47,17 @@ export function AssetDetailHeader({
   );
 }
 
-function AssetFactsPanel({
-  facts,
-  description,
-}: {
-  facts: readonly AssetFact[];
-  description: string | null;
-}) {
+/** The asset's comparable figures on one wrapping line, each under its label. */
+function AssetFacts({ facts }: { facts: readonly AssetFact[] }) {
   return (
-    <div className="flex flex-col gap-6">
-      {facts.length ? (
-        <dl className="flex flex-col gap-0.5 rounded-lg bg-secondary p-1.5 text-xs text-secondary-foreground">
-          {facts.map((fact) => (
-            <div
-              key={fact.label}
-              className="flex items-start justify-between gap-3 rounded-md px-1.5 py-1 transition-colors duration-150 hover:bg-accent"
-            >
-              <dt className="shrink-0 whitespace-nowrap text-muted-foreground">{fact.label}</dt>
-              <dd className="min-w-0 text-right text-balance">{fact.value}</dd>
-            </div>
-          ))}
-        </dl>
-      ) : (
-        <p className="rounded-lg bg-secondary p-3 text-xs text-muted-foreground">No details yet.</p>
-      )}
-      {description ? (
-        <div className="max-w-prose">
-          <Markdown>{description}</Markdown>
+    <dl className="flex flex-wrap gap-x-10 gap-y-4">
+      {facts.map((fact) => (
+        <div key={fact.label} className="flex min-w-0 flex-col gap-1">
+          <dt className="text-xs whitespace-nowrap text-muted-foreground">{fact.label}</dt>
+          <dd className="min-w-0 text-sm font-medium tabular-nums">{fact.value}</dd>
         </div>
-      ) : null}
-    </div>
+      ))}
+    </dl>
   );
 }
 
@@ -135,15 +116,15 @@ function AssetChecksPanel({ quality }: { quality: AssetQuality }) {
 }
 
 /**
- * The asset's views behind tabs, metadata first with the description at its foot. A codebase
- * adds its activity views; any other asset shows its file tree. Quality checks come last.
+ * The asset's figures and description, then its views behind tabs: a codebase's file tree and
+ * activity, any other asset's file tree, and quality checks last. The figures stay in view
+ * whichever tab is open.
  */
 export function AssetDetailViews({
   resetKey,
   codebase,
   facts,
   tree,
-  filesMeta,
   quality,
   description,
 }: {
@@ -152,38 +133,46 @@ export function AssetDetailViews({
   codebase: CodebaseActivitySource | null;
   facts: readonly AssetFact[];
   tree: ReactNode | null;
-  filesMeta: ReactNode;
   quality: AssetQuality | null;
   description: string | null;
 }) {
-  const metadata = <AssetFactsPanel facts={facts} description={description} />;
   const trailing: AssetViewTab[] =
     quality && quality.verdicts.length
       ? [{ value: "quality", label: "Quality checks", node: <AssetChecksPanel quality={quality} /> }]
       : [];
-  if (codebase) {
-    return (
-      <AssetCodebaseViews
-        resetKey={resetKey}
-        activity={codebase}
-        metadata={metadata}
-        trailing={trailing}
-        files={{ meta: filesMeta, body: tree }}
-      />
-    );
+  const tabs: AssetViewTab[] = [];
+  if (!codebase) {
+    if (tree) {
+      tabs.push({
+        value: "files",
+        label: "Files",
+        node: (
+          <Widget className="scroll-fade scrollbar-thin overflow-y-auto p-1.5" fit>
+            {tree}
+          </Widget>
+        ),
+      });
+    }
+    tabs.push(...trailing);
   }
-  const tabs: AssetViewTab[] = [{ value: "metadata", label: "Metadata", node: metadata }];
-  if (tree) {
-    tabs.push({
-      value: "files",
-      label: "Files",
-      node: (
-        <Widget meta={filesMeta} className="scroll-fade scrollbar-thin overflow-y-auto p-1.5" fit>
-          {tree}
-        </Widget>
-      ),
-    });
-  }
-  tabs.push(...trailing);
-  return <AssetViewTabs resetKey={resetKey} views={tabs} />;
+  return (
+    <div className="flex flex-col gap-6">
+      {facts.length ? <AssetFacts facts={facts} /> : null}
+      {description ? (
+        <div className="max-w-prose text-muted-foreground">
+          <Markdown>{description}</Markdown>
+        </div>
+      ) : null}
+      {codebase ? (
+        <AssetCodebaseViews
+          resetKey={resetKey}
+          activity={codebase}
+          trailing={trailing}
+          files={{ body: tree }}
+        />
+      ) : (
+        <AssetViewTabs resetKey={resetKey} views={tabs} />
+      )}
+    </div>
+  );
 }

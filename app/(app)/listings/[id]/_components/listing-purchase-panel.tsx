@@ -49,6 +49,9 @@ function ListingHeroPriceSummary({ listing, help }: { listing: Listing; help: Re
           </span>
         ) : null}
       </div>
+      {listing.acceptsOffers ? (
+        <span className="text-sm text-muted-foreground">or best offer</span>
+      ) : null}
     </div>
   );
 }

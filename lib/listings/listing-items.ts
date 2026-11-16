@@ -1,6 +1,6 @@
 import { getAssetKindLabel, LISTING_ASSET_KIND_ORDER } from "@/lib/listings/asset-kinds";
 import type { Listing, ListingAsset, ListingAssetKind } from "@/lib/fake-api/types";
-import { formatBytes, formatDate } from "@/lib/format";
+import { formatBytes } from "@/lib/format";
 
 /** A comparable fact; a null value is unknown and left out. */
 export type ListingItemFact = { label: string; value: string | null };
@@ -39,8 +39,11 @@ function positiveCount(count: number): string | null {
   return count > 0 ? COMPACT.format(count) : null;
 }
 
-function listOrNull(values: readonly string[]): string | null {
-  return values.length ? values.join(", ") : null;
+/** `2018–2025`, or the one year when both ends fall in it. */
+function yearSpan(start: string, end: string): string {
+  const from = new Date(start).getUTCFullYear();
+  const to = new Date(end).getUTCFullYear();
+  return from === to ? `${from}` : `${from}–${to}`;
 }
 
 /** File extensions, most files first. */
@@ -63,12 +66,10 @@ function describeAsset(asset: ListingAsset): {
         headline: lines ? `${lines} lines of code` : null,
         highlights: asset.languages.slice(0, 3),
         facts: [
-          { label: "Language", value: asset.languages[0] ?? null },
-          { label: "Also", value: listOrNull(asset.languages.slice(1, 3)) },
           { label: "Lines of code", value: lines },
           {
             label: "History",
-            value: `${formatDate(asset.historyStart)} – ${formatDate(asset.historyEnd)}`,
+            value: yearSpan(asset.historyStart, asset.historyEnd),
           },
           { label: "Commits", value: positiveCount(asset.commits) },
           { label: "Contributors", value: positiveCount(asset.contributors) },
@@ -85,7 +86,7 @@ function describeAsset(asset: ListingAsset): {
         facts: [
           { label: "Files", value: files },
           { label: "Size", value: size },
-          { label: "Mostly", value: extensions.length ? extensions.join(" ") : null },
+          { label: "File types", value: extensions.length ? extensions.join(" ") : null },
         ],
       };
     }

@@ -7,7 +7,6 @@ import { AssetReadinessChecklist } from "@/app/(app)/assets/[id]/_components/ass
 import { DeleteAssetButton } from "@/app/(app)/assets/[id]/_components/delete-asset-button";
 import { MetaRow } from "@/components/inventory/asset-record-parts";
 import { InventoryAssetStatusMarker } from "@/components/inventory/inventory-asset-status-marker";
-import { LanguageBadges } from "@/components/inventory/language-badges";
 import { AssetDetailHeader, AssetDetailViews, type AssetFact } from "@/components/listings/asset-detail";
 import { AssetPreviewTree } from "@/components/listings/asset-preview-tree";
 import { OrgIdentity } from "@/components/organizations/org-identity";
@@ -73,6 +72,12 @@ function AssetVisibilityBadge({ listings: allListings }: { listings: readonly As
 function assetFacts(asset: InventoryAsset): AssetFact[] {
   const facts: AssetFact[] = [];
   const { codebase, rawData } = asset;
+  if (codebase?.languages.length) {
+    facts.push({
+      label: codebase.languages.length === 1 ? "Language" : "Languages",
+      value: codebase.languages.join(", "),
+    });
+  }
   if (codebase?.historyStart && codebase.historyEnd) {
     facts.push({
       label: "History",
@@ -91,7 +96,7 @@ function assetFacts(asset: InventoryAsset): AssetFact[] {
   }
   if (rawData) {
     facts.push({ label: "Size", value: formatBytes(rawData.sizeBytes) });
-    facts.push({ label: "Mostly", value: topExtensions(rawData.extensions).join(" ") });
+    facts.push({ label: "File types", value: topExtensions(rawData.extensions).join(" ") });
   }
   if (asset.domainTags.length) {
     facts.push({ label: "Domains", value: asset.domainTags.join(", ") });
@@ -101,7 +106,6 @@ function assetFacts(asset: InventoryAsset): AssetFact[] {
 
 /** The asset as buyers see it on its page: header with the owning vendor, then its views. */
 function PublicAssetDetail({ asset }: { asset: InventoryAsset }) {
-  const languages = asset.codebase?.languages ?? [];
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -136,7 +140,6 @@ function PublicAssetDetail({ asset }: { asset: InventoryAsset }) {
             />
           ) : null
         }
-        filesMeta={languages.length ? <LanguageBadges languages={languages} /> : null}
         quality={null}
         description={asset.description}
       />

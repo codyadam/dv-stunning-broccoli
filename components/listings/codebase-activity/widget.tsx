@@ -11,7 +11,8 @@ import { ScrollRow } from "./scroll-row";
 const WIDGET_HEIGHT = 400;
 
 /**
- * The flat surface a widget lives in: a thin stats strip and a fixed-height body. A `fit` body
+ * The flat surface a widget lives in: a thin stats strip, when it has stats or actions, and a
+ * fixed-height body. A `fit` body
  * (a file tree) is as tall as its content up to that height, then scrolls.
  */
 export function Widget({
@@ -21,7 +22,7 @@ export function Widget({
   className,
   fit = false,
 }: {
-  meta: React.ReactNode;
+  meta?: React.ReactNode;
   actions?: React.ReactNode;
   children: React.ReactNode;
   className?: string;
@@ -29,10 +30,12 @@ export function Widget({
 }) {
   return (
     <section className="overflow-hidden rounded-lg bg-secondary text-secondary-foreground">
-      <div className="flex h-10 items-center gap-4 border-b px-3 text-sm text-muted-foreground">
-        <ScrollRow className="flex-1">{meta}</ScrollRow>
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-      </div>
+      {meta || actions ? (
+        <div className="flex h-10 items-center gap-4 border-b px-3 text-sm text-muted-foreground">
+          <ScrollRow className="flex-1">{meta}</ScrollRow>
+          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+        </div>
+      ) : null}
       <div
         className={cn("relative", className)}
         style={fit ? { maxHeight: WIDGET_HEIGHT } : { height: WIDGET_HEIGHT }}

@@ -8,10 +8,9 @@ import {
   ListingLifecycleCard,
   ListingManageCard,
 } from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
-import { AssetDeck } from "@/components/listings/asset-deck";
 import { AssetKindTile } from "@/components/listings/asset-type-icon";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
-import { LISTING_ASSETS_ID, ListingAssetBrowser } from "@/components/listings/listing-asset-browser";
+import { ListingAssetBrowser } from "@/components/listings/listing-asset-browser";
 import { ListingBuyerQualityCard } from "@/components/listings/listing-buyer-quality-card";
 import { OrgIdentity } from "@/components/organizations/org-identity";
 import { OwnerBand } from "@/components/patterns/owner-band";
@@ -25,21 +24,6 @@ import type { Listing } from "@/lib/fake-api/types";
 import { formatDate, formatRelativeTime } from "@/lib/format";
 import { SESSION } from "@/lib/session";
 import { useNavbarBreadcrumbPageLabel } from "@/lib/shell/navbar-breadcrumb-context";
-
-function TagRow({ label, tags }: { label: string; tags: readonly string[] }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="flex flex-wrap gap-1.5">
-        {tags.map((tag) => (
-          <Badge key={tag} variant="secondary" size="sm">
-            {tag}
-          </Badge>
-        ))}
-      </dd>
-    </div>
-  );
-}
 
 /** What only the listing's owner sees: its status and the inventory assets it sells. */
 function ListingOwnerTools({ listing }: { listing: Listing }) {
@@ -101,7 +85,6 @@ function ListingOwnerTools({ listing }: { listing: Listing }) {
 export function ListingDetailView({ listing }: { listing: Listing }) {
   useNavbarBreadcrumbPageLabel(listing.title);
   const isOwner = listing.vendor.id === SESSION.vendor.id;
-  const assetCount = listing.assets.length;
   const oneLiner = listing.oneLiner.trim();
 
   return (
@@ -127,34 +110,27 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
                 : `Posted ${formatRelativeTime(listing.postedAt)}`}
             </span>
           </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-            {/* The gap matches the asset line below, which leaves room for the fanned deck. */}
+          {oneLiner ? (
+            <p className="max-w-prose text-pretty text-muted-foreground">{oneLiner}</p>
+          ) : null}
+          <div className="mt-auto flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 pt-3">
             <OrgIdentity
               org={listing.vendor}
               roleLabel="Vendor"
               openListings={listing.vendor.openListings}
-              className="gap-3"
             />
+            {listing.domainTags.length ? (
+              <ul className="flex flex-wrap gap-1.5" aria-label="Domains">
+                {listing.domainTags.map((tag) => (
+                  <li key={tag}>
+                    <Badge variant="secondary" size="sm">
+                      {tag}
+                    </Badge>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
           </div>
-          {assetCount > 0 ? (
-            <a
-              href={`#${LISTING_ASSETS_ID}`}
-              onClick={(event) => {
-                const target = document.getElementById(LISTING_ASSETS_ID);
-                if (!target) return;
-                event.preventDefault();
-                const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-                target.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "start" });
-              }}
-              className="group/deck flex w-fit items-center gap-3 rounded-sm text-sm font-medium text-muted-foreground tabular-nums transition-colors duration-150 ease-out hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-            >
-              <AssetDeck listing={listing} size="sm" />
-              {assetCount === 1 ? "1 asset" : `${assetCount} assets`}
-            </a>
-          ) : null}
-          {oneLiner ? (
-            <p className="max-w-prose text-pretty text-muted-foreground">{oneLiner}</p>
-          ) : null}
         </div>
         <div className="flex flex-col justify-center border-t border-border bg-muted/40 p-7 md:border-t-0 md:border-l">
           <ListingPurchasePanel listing={listing} isOwner={isOwner} />
@@ -177,21 +153,6 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
           ) : null}
         </div>
         <aside className="flex flex-col gap-4">
-          <OrgIdentity
-            org={listing.vendor}
-            roleLabel="Vendor"
-            openListings={listing.vendor.openListings}
-            variant="card"
-          />
-          {listing.domainTags.length ? (
-            <Card>
-              <CardContent>
-                <dl>
-                  <TagRow label="Domains" tags={listing.domainTags} />
-                </dl>
-              </CardContent>
-            </Card>
-          ) : null}
           <ListingBuyerQualityCard listing={listing} />
         </aside>
       </div>
