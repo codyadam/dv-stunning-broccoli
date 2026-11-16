@@ -25,8 +25,8 @@ import type {
 /** How often an asset still being analyzed is fetched again. */
 const ASSET_ANALYSIS_POLL_MS = 5_000;
 
-/** How often a listing in quality checks is fetched again. */
-const LISTING_REVIEW_POLL_MS = 2_000;
+/** Checks finish under a second apart, so a run in progress polls often enough to show each one. */
+const LISTING_REVIEW_POLL_MS = 800;
 
 const BROWSE_PAGE_SIZE = 8;
 

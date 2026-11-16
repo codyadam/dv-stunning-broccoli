@@ -4,10 +4,8 @@ import Link from "next/link";
 
 import { ListingHeroTitle } from "@/app/(app)/listings/[id]/_components/listing-hero-title";
 import { ListingPurchasePanel } from "@/app/(app)/listings/[id]/_components/listing-purchase-panel";
-import {
-  ListingLifecycleCard,
-  ListingManageCard,
-} from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
+import { ListingStatusAndQualityCard } from "@/app/(app)/listings/[id]/_components/listing-status-and-quality-card";
+import { ListingManageCard } from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
 import { AssetDeck } from "@/components/listings/asset-deck";
 import { AssetKindTile } from "@/components/listings/asset-type-icon";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
@@ -20,9 +18,8 @@ import { PageContainer } from "@/components/shell/page-layout";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Markdown } from "@/components/ui/markdown";
-import { StatusMarker } from "@/components/ui/status-marker";
 import type { Listing } from "@/lib/fake-api/types";
-import { formatDate, formatRelativeTime } from "@/lib/format";
+import { formatRelativeTime } from "@/lib/format";
 import { SESSION } from "@/lib/session";
 import { useNavbarBreadcrumbPageLabel } from "@/lib/shell/navbar-breadcrumb-context";
 
@@ -71,29 +68,18 @@ function ListingOwnerTools({ listing }: { listing: Listing }) {
       </CardContent>
     </Card>
   );
-  if (workspace) {
-    return (
-      <OwnerBand>
-        <div className="flex min-w-0 flex-col gap-4">
-          <ListingLifecycleCard listing={listing} status={workspace.status} />
-          {inventoryCard}
-        </div>
-        <ListingManageCard listing={listing} status={workspace.status} />
-      </OwnerBand>
-    );
-  }
+  const status = workspace?.status ?? "live";
   return (
     <OwnerBand>
-      <Card aria-labelledby="listing-status-heading">
-        <CardHeader className="pb-2">
-          <CardTitle id="listing-status-heading">Listing status</CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-2 text-sm">
-          <StatusMarker status="active" label="Live on the marketplace" showLabel />
-          <p className="text-muted-foreground">Listed since {formatDate(listing.postedAt)}.</p>
-        </CardContent>
-      </Card>
-      {inventoryCard}
+      <ListingStatusAndQualityCard
+        listing={listing}
+        status={status}
+        editable={workspace !== null && (status === "needs_fixes" || status === "draft")}
+      />
+      <div className="flex min-w-0 flex-col gap-4">
+        {workspace ? <ListingManageCard listing={listing} status={workspace.status} /> : null}
+        {inventoryCard}
+      </div>
     </OwnerBand>
   );
 }

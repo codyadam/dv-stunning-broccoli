@@ -200,7 +200,7 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
                     className="w-full justify-between gap-1"
                     render={
                       <Link
-                        href={listing.status === "live" ? listingHref(listing.id) : listingEditHref(listing.id)}
+                        href={listing.status === "draft" ? listingEditHref(listing.id) : listingHref(listing.id)}
                       />
                     }
                   >

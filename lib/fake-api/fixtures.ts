@@ -878,7 +878,7 @@ const DATA_CHECKS: CheckSpec[] = [
 ];
 
 /** The quality checks a listing of codebases and/or raw data runs, each with `statusOf`'s result. */
-export function checkVerdicts(
+function checkVerdicts(
   kinds: { hasCode: boolean; hasData: boolean },
   statusOf: (check: CheckSpec) => QcVerdict["status"],
 ): QcVerdict[] {

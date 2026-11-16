@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RiDeleteBinLine, RiEditLine, RiEyeOffLine, RiRocketLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiEditLine, RiEyeOffLine, RiRocketLine, RiToolsLine } from "@remixicon/react";
 import { toast } from "sonner";
 
 import {
@@ -18,89 +18,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Spinner } from "@/components/ui/spinner";
-import { StatusMarker } from "@/components/ui/status-marker";
 import {
   useDeleteListingMutation,
   usePublishListingMutation,
   useUnpublishListingMutation,
 } from "@/lib/fake-api/hooks";
 import type { Listing, ListingStatus } from "@/lib/fake-api/types";
-import { formatDate } from "@/lib/format";
-import { LISTING_STATUS_LABEL } from "@/lib/listings/listing-edit";
-import { LISTING_STATUS_MARKER, listingEditHref } from "@/lib/listings/routes";
-import { cn } from "@/lib/utils";
-
-const LIFECYCLE: readonly ListingStatus[] = ["draft", "in_review", "ready", "live"];
-
-function statusSentence(status: ListingStatus, postedAt: string): React.ReactNode {
-  switch (status) {
-    case "draft":
-      return "Finish the copy and prices, then submit it for review.";
-    case "in_review":
-      return (
-        <span className="flex items-center gap-2">
-          <Spinner className="size-3.5" />
-          Quality checks are running on the listing and its assets.
-        </span>
-      );
-    case "ready":
-      return "Every check passed. Go live to put it on the catalog.";
-    case "live":
-      return `Live on the marketplace since ${formatDate(postedAt)}.`;
-    default: {
-      const unhandled: never = status;
-      throw new Error(`Unhandled listing status ${String(unhandled)}`);
-    }
-  }
-}
-
-/** The listing's place in draft → review → ready → active, as a strip of pills. */
-export function ListingLifecycleCard({ listing, status }: { listing: Listing; status: ListingStatus }) {
-  const current = LIFECYCLE.indexOf(status);
-  return (
-    <Card aria-labelledby="listing-status-heading">
-      <CardHeader className="pb-2">
-        <CardTitle id="listing-status-heading">Listing status</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 text-sm">
-        <ol className="flex items-center">
-          {LIFECYCLE.map((step, index) => (
-            <li key={step} className={cn("flex items-center", index > 0 && "flex-1")}>
-              {index > 0 ? (
-                <span
-                  aria-hidden
-                  className={cn(
-                    "mx-1.5 h-px flex-1 border-t border-dashed",
-                    index <= current ? "border-foreground/40" : "border-border",
-                  )}
-                />
-              ) : null}
-              <span
-                aria-current={index === current ? "step" : undefined}
-                className={cn(
-                  "flex h-10 items-center rounded-md border px-3",
-                  index === current
-                    ? "border-foreground/20 bg-background font-medium"
-                    : index < current
-                      ? "border-border text-muted-foreground"
-                      : "border-dashed border-border text-muted-foreground opacity-70",
-                )}
-              >
-                <StatusMarker
-                  status={index <= current ? LISTING_STATUS_MARKER[step] : "draft"}
-                  label={LISTING_STATUS_LABEL[step]}
-                  showLabel
-                />
-              </span>
-            </li>
-          ))}
-        </ol>
-        <p className="text-muted-foreground">{statusSentence(status, listing.postedAt)}</p>
-      </CardContent>
-    </Card>
-  );
-}
+import { listingEditHref } from "@/lib/listings/routes";
 
 /** Go live, edit, hide or delete a listing the vendor composed. */
 export function ListingManageCard({ listing, status }: { listing: Listing; status: ListingStatus }) {
@@ -143,7 +67,12 @@ export function ListingManageCard({ listing, status }: { listing: Listing; statu
             Go live
           </Button>
         ) : null}
-        {status === "live" ? (
+        {status === "needs_fixes" ? (
+          <Button className="w-full" disabled={busy} render={<Link href={listingEditHref(listing.id)} />}>
+            <RiToolsLine data-icon="inline-start" />
+            Fix and resubmit
+          </Button>
+        ) : status === "live" ? (
           <Button variant="secondary" className="w-full" disabled={busy} onClick={hide}>
             <RiEyeOffLine data-icon="inline-start" />
             Hide from catalog

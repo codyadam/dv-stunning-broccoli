@@ -81,6 +81,7 @@ export function listingDisplayTitle(title: string): string {
 export const LISTING_STATUS_LABEL: Readonly<Record<ListingStatus, string>> = {
   draft: "Draft",
   in_review: "In review",
+  needs_fixes: "Needs fixes",
   ready: "Ready",
   live: "Active",
 };

@@ -1,14 +1,29 @@
 import { generateCodebaseActivity } from "@/lib/fake-api/codebase-activity";
-import { readDb, resetDb, writeDb, type AssetRecord, type ListingRecord } from "@/lib/fake-api/db";
+import {
+  qcSubjectAsset,
+  readDb,
+  resetDb,
+  writeDb,
+  type AssetRecord,
+  type ListingRecord,
+} from "@/lib/fake-api/db";
 import {
   DEMO_VENDOR_ID,
   FORGE_REPOSITORIES,
+  INVENTORY_SPECS,
   LISTING_SPECS,
   VENDORS,
-  checkVerdicts,
   listingVerdicts,
   type ListingSpec,
 } from "@/lib/fake-api/fixtures";
+import {
+  LISTING_DESCRIPTION_MIN,
+  planQcRun,
+  qcRunCleared,
+  qcRunView,
+  type QcRunRecord,
+  type QcSubject,
+} from "@/lib/fake-api/qc";
 import { codebaseStructure, rawDataStructure } from "@/lib/fake-api/structure";
 import type {
   AnalysisStatus,
@@ -30,6 +45,8 @@ import type {
   ListingStatus,
   ListingVendor,
   NewUpload,
+  QcRun,
+  QcVerdict,
 } from "@/lib/fake-api/types";
 import {
   DRAFT_LISTING_TITLE,
@@ -128,18 +145,93 @@ function buildListing(spec: ListingSpec): Listing {
     dvQualityCertified: spec.certified,
     qcVerdicts: listingVerdicts(spec),
     qcCheckedAt: spec.updatedAt ?? spec.postedAt,
+    qcRuns: fixtureRuns(spec)
+      .map((run) => qcRunView(run, Date.parse(spec.postedAt)))
+      .reverse(),
     workspace: null,
   };
 }
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** What quality checks read from a fixture listing; its assets' descriptions come from inventory. */
+function fixtureSubject(spec: ListingSpec): QcSubject {
+  return {
+    description: spec.description,
+    assets: spec.assets.map((asset) => {
+      const inventory = INVENTORY_SPECS.find((candidate) => candidate.id === asset.inventoryAssetId);
+      const repo = asset.type === "repo" ? asset : null;
+      const zip = asset.type === "zip" ? asset : null;
+      return {
+        inventoryAssetId: asset.inventoryAssetId ?? null,
+        name: asset.name,
+        kind: asset.type,
+        description: asset.description ?? inventory?.description ?? spec.oneLiner,
+        domainTags: inventory?.domainTags ?? spec.domains,
+        priceUsd: asset.priceUsd,
+        channel: repo ? (inventory?.codebase?.channel ?? "github") : null,
+        linesOfCode: repo?.loc ?? 0,
+        commits: repo?.commits ?? 0,
+        contributors: repo?.contributors ?? 0,
+        fileCount: zip ? Object.values(zip.extensions).reduce((sum, count) => sum + count, 0) : 0,
+        extensions: zip?.extensions ?? {},
+      };
+    }),
+  };
+}
+
+/**
+ * The demo vendor's past runs on its fixture listings, oldest first: a listing with a long
+ * description first went in with a short one and came back for fixes; the passing run is two
+ * days before it went live. Other vendors' runs stay private to them.
+ */
+function fixtureRuns(spec: ListingSpec): QcRunRecord[] {
+  if (spec.vendorId !== DEMO_VENDOR_ID) return [];
+  const subject = fixtureSubject(spec);
+  const posted = Date.parse(spec.postedAt);
+  const passing = (number: number) => ({ id: `qcr_${spec.id}_${number}`, number, startedAt: posted - 2 * DAY_MS });
+  if (spec.description.length < 2 * LISTING_DESCRIPTION_MIN) return [planQcRun(subject, passing(1))];
+  const shortLength = Math.round(LISTING_DESCRIPTION_MIN * 0.7);
+  const failed = planQcRun(
+    subject,
+    { id: `qcr_${spec.id}_1`, number: 1, startedAt: posted - 4 * DAY_MS - 3 * 60 * 60 * 1000 },
+    (check) =>
+      check.key === "listing_copy"
+        ? {
+            outcome: "failed",
+            summary: `The description is ${shortLength} characters; buyers need at least ${LISTING_DESCRIPTION_MIN} to judge what they get.`,
+            fix: null,
+          }
+        : null,
+  );
+  return [failed, planQcRun(subject, passing(2))];
+}
+
 const LISTINGS: readonly Listing[] = LISTING_SPECS.map(buildListing);
 
-/** How long a submitted listing's quality checks run before it is ready to go live. */
-export const LISTING_REVIEW_MS = 6_000;
-
+/** A submitted listing is in review while its latest run runs, then ready or back for fixes. */
 function listingStatus(record: ListingRecord, now: number): ListingStatus {
-  if (record.status !== "in_review" || record.reviewStartsAt === null) return record.status;
-  return now - record.reviewStartsAt < LISTING_REVIEW_MS ? "in_review" : "ready";
+  const latest = record.qcRuns.at(-1);
+  if (record.status !== "in_review" || !latest) return record.status;
+  const cleared = qcRunCleared(latest, now);
+  if (cleared === null) return "in_review";
+  return cleared ? "ready" : "needs_fixes";
+}
+
+function qcRunViews(record: ListingRecord, now: number): QcRun[] {
+  return record.qcRuns.map((run) => qcRunView(run, now)).reverse();
+}
+
+/** A run's checks as buyers read them; checks with nothing to grade read as not passed. */
+function runVerdicts(run: QcRun): QcVerdict[] {
+  return run.checks.map((check) => ({
+    id: check.id,
+    title: check.assetName ? `${check.label} · ${check.assetName}` : check.label,
+    description: check.summary,
+    group: check.assetKind === "repo" ? "Codebases" : check.assetKind === "zip" ? "Raw data" : "Listing",
+    mandatory: check.mandatory,
+    status: check.status === "passed" ? "passed" : check.status === "queued" || check.status === "running" ? "pending" : "failed",
+  }));
 }
 
 function toListingAsset(record: AssetRecord, priceUsd: number | null): ListingAsset {
@@ -182,11 +274,9 @@ function toOwnListing(record: ListingRecord, now: number): Listing {
     const asset = db.assets.find((candidate) => candidate.id === member.assetId);
     return asset ? [toListingAsset(asset, member.priceUsd)] : [];
   });
-  const checked = status === "ready" || status === "live";
-  const checkedAt =
-    checked && record.reviewStartsAt !== null
-      ? new Date(record.reviewStartsAt + LISTING_REVIEW_MS).toISOString()
-      : null;
+  const runs = qcRunViews(record, now);
+  const latest = runs[0] ?? null;
+  const finished = latest?.status === "completed" ? latest : null;
   const domainTags = [
     ...new Set(
       record.members.flatMap(
@@ -207,18 +297,10 @@ function toOwnListing(record: ListingRecord, now: number): Listing {
     buyNowPrice: assets.reduce((sum, asset) => sum + asset.priceUsd, 0),
     priceBeforeDrop: null,
     acceptsOffers: true,
-    dvQualityCertified: checked,
-    qcVerdicts:
-      status === "draft"
-        ? []
-        : checkVerdicts(
-            {
-              hasCode: assets.some((asset) => asset.kind === "repo"),
-              hasData: assets.some((asset) => asset.kind === "zip"),
-            },
-            () => (checked ? "passed" : "pending"),
-          ),
-    qcCheckedAt: checkedAt,
+    dvQualityCertified: finished?.checks.every((check) => check.status === "passed") ?? false,
+    qcVerdicts: latest ? runVerdicts(latest) : [],
+    qcCheckedAt: finished?.completedAt ?? null,
+    qcRuns: runs,
     workspace: { status, createdAt: record.createdAt },
   };
 }
@@ -715,6 +797,7 @@ function toListingDraft(record: ListingRecord, now: number): ListingDraft {
     }),
     autoClearingPriceUsd: record.autoClearingPriceUsd,
     updatedAt: record.updatedAt,
+    latestRun: qcRunViews(record, now)[0] ?? null,
   };
 }
 
@@ -728,7 +811,7 @@ function newListingRecord(assets: readonly AssetRecord[], now: number): ListingR
     members: assets.map((asset) => ({ assetId: asset.id, priceUsd: asset.priceUsd })),
     autoClearingPriceUsd: null,
     status: "draft",
-    reviewStartsAt: null,
+    qcRuns: [],
     createdAt: at,
     updatedAt: at,
     publishedAt: null,
@@ -770,7 +853,8 @@ export async function getListingDraft(id: string): Promise<ListingDraft> {
 
 /**
  * Saves edits to a listing. A live listing only takes a new auto-clearing price; a listing in
- * review takes nothing; a ready listing that changes goes back to draft for a fresh review.
+ * review takes nothing; a ready listing that changes goes back to draft for a fresh review, and
+ * one that needs fixes stays so until it is resubmitted.
  */
 export async function updateListing(id: string, patch: ListingPatch): Promise<ListingDraft> {
   await delay();
@@ -811,25 +895,39 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
     members: fields.members.map((member) => ({ ...member })),
     autoClearingPriceUsd: fields.autoClearingPriceUsd,
     status: status === "ready" && changesContent ? "draft" : status,
-    reviewStartsAt: status === "ready" && changesContent ? null : record.reviewStartsAt,
     updatedAt: new Date(now).toISOString(),
   };
   saveListingRecord(next);
   return toListingDraft(next, now);
 }
 
-/** Sends a complete draft to quality checks; they pass after `LISTING_REVIEW_MS`. */
+/**
+ * Sends a complete draft, or one that needs fixes, to a new quality-check run. What each check
+ * finds is decided now from the listing and its assets; the checks reveal it one by one.
+ */
 export async function submitListing(id: string): Promise<ListingDraft> {
   await delay();
   const now = Date.now();
   const record = requireListingRecord(id);
-  if (listingStatus(record, now) !== "draft") throw new ApiError("Only a draft can be submitted for review.", 409);
+  const status = listingStatus(record, now);
+  if (status !== "draft" && status !== "needs_fixes") {
+    throw new ApiError("Only a draft or a listing that needs fixes can be submitted for review.", 409);
+  }
   const problem = Object.values(listingErrors(record, { submitting: true }))[0];
   if (problem) throw new ApiError(problem, 400);
+  const assets = readDb().assets;
+  const subject: QcSubject = {
+    description: record.description,
+    assets: record.members.flatMap((member) => {
+      const asset = assets.find((candidate) => candidate.id === member.assetId);
+      return asset ? [qcSubjectAsset(asset, member.priceUsd)] : [];
+    }),
+  };
+  const number = record.qcRuns.length + 1;
   const next: ListingRecord = {
     ...record,
     status: "in_review",
-    reviewStartsAt: now,
+    qcRuns: [...record.qcRuns, planQcRun(subject, { id: newId("qcr"), number, startedAt: now })],
     updatedAt: new Date(now).toISOString(),
   };
   saveListingRecord(next);
