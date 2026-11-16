@@ -24,6 +24,11 @@ const LANGUAGE_COLORS: Record<string, string> = {
   Kotlin: "#a97bff",
   Ruby: "#cc342d",
   "C#": "#178600",
+  JavaScript: "#f1e05a",
+  PHP: "#4f5d95",
+  Swift: "#f05138",
+  Dart: "#00b4ab",
+  SQL: "#e38c00",
   Markdown: "#9ca3af",
   YAML: "#cb171e",
   Other: "#6b7280",
@@ -31,6 +36,13 @@ const LANGUAGE_COLORS: Record<string, string> = {
 
 const EXTENSION_LANGUAGE: Record<string, string> = {
   ts: "TypeScript",
+  tsx: "TypeScript",
+  js: "JavaScript",
+  vue: "JavaScript",
+  php: "PHP",
+  swift: "Swift",
+  dart: "Dart",
+  sql: "SQL",
   py: "Python",
   go: "Go",
   rs: "Rust",
@@ -40,6 +52,7 @@ const EXTENSION_LANGUAGE: Record<string, string> = {
   cs: "C#",
   md: "Markdown",
   yml: "YAML",
+  yaml: "YAML",
 };
 
 type CodebaseActivityInput = {

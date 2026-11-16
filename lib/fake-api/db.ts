@@ -17,7 +17,7 @@ export type AssetRecord = {
   createdAt: string;
   /** Measured values, revealed once analysis completes. */
   codebase: NonNullable<InventorySpec["codebase"]> | null;
-  rawData: { ext: string; fileCount: number; sizeBytes: number; extensions: Record<string, number> } | null;
+  rawData: { fileCount: number; sizeBytes: number; extensions: Record<string, number> } | null;
   /** When analysis of the data begins (epoch ms); null for assets analyzed long ago. */
   analysisStartsAt: number | null;
 };
@@ -29,7 +29,7 @@ type DbState = {
   connectedForges: ForgeProvider[];
 };
 
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORAGE_KEY = "datavendor-demo-db";
 
 function seedRecord(spec: InventorySpec): AssetRecord {
@@ -44,7 +44,11 @@ function seedRecord(spec: InventorySpec): AssetRecord {
     createdAt: spec.createdAt,
     codebase: spec.codebase ?? null,
     rawData: spec.rawData
-      ? { ...spec.rawData, extensions: { [spec.rawData.ext]: spec.rawData.fileCount } }
+      ? {
+          fileCount: Object.values(spec.rawData.extensions).reduce((sum, count) => sum + count, 0),
+          sizeBytes: Math.round(spec.rawData.sizeBytes),
+          extensions: spec.rawData.extensions,
+        }
       : null,
     analysisStartsAt: null,
   };

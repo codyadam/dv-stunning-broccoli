@@ -15,7 +15,7 @@ npm run dev        # http://localhost:3000
 
 Other scripts: `npm run build`, `npm start`, `npm run lint`, `npm run typecheck`.
 
-You are always signed in as Jordan Lee of Fernhill Labs, a vendor. Changes persist in localStorage; **Reset demo data** in the user menu (bottom left) restores the fixtures.
+You are always signed in as Mara Okafor of Kettlewell Digital, a vendor. Changes persist in localStorage; **Reset demo data** in the user menu (bottom left) restores the fixtures.
 
 ## Tour
 

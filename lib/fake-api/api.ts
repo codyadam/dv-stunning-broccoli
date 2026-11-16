@@ -89,10 +89,10 @@ function buildListing(spec: ListingSpec): Listing {
           name: asset.name,
           inventoryAssetId: asset.inventoryAssetId ?? null,
           description: asset.description ?? null,
-          structure: rawDataStructure(asset.name, asset.ext),
-          fileCount: asset.files,
+          structure: rawDataStructure(asset.name, asset.extensions),
+          fileCount: Object.values(asset.extensions).reduce((sum, count) => sum + count, 0),
           sizeBytes: Math.round(asset.sizeBytes),
-          extensions: { [asset.ext]: asset.files },
+          extensions: asset.extensions,
           priceUsd: asset.priceUsd,
         },
   );
@@ -161,7 +161,7 @@ function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
       ? []
       : codebase
         ? codebaseStructure(record.id, codebase.languages[0] ?? "")
-        : rawDataStructure(record.id, rawData?.ext ?? "bin"),
+        : rawDataStructure(record.id, rawData?.extensions ?? {}),
   };
 }
 
@@ -344,8 +344,6 @@ export async function createUpload(upload: NewUpload): Promise<InventoryAsset> {
   await delay();
   const now = Date.now();
   const id = newId("ast");
-  const primaryExt =
-    Object.entries(upload.extensions).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "bin";
   const record: AssetRecord = {
     id,
     title: upload.title,
@@ -371,7 +369,6 @@ export async function createUpload(upload: NewUpload): Promise<InventoryAsset> {
     rawData:
       upload.sku === "raw_data"
         ? {
-            ext: primaryExt,
             fileCount: upload.fileCount,
             sizeBytes: upload.sizeBytes,
             extensions: upload.extensions,
