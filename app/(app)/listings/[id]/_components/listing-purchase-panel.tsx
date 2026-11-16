@@ -19,9 +19,9 @@ function priceDrop(price: number, was: number | null): { was: number; percentOff
 function ListingHeroPriceSummary({ listing, help }: { listing: Listing; help: ReactNode }) {
   const discount = priceDrop(listing.buyNowPrice, listing.priceBeforeDrop);
   return (
-    <div className="flex flex-col gap-0.5">
+    <div className="flex min-w-0 flex-col gap-1 @max-[40rem]/main:gap-0">
       <div className="flex items-center gap-1.5 text-muted-foreground">
-        <span className="text-base">Price</span>
+        <span className="text-sm @max-[40rem]/main:text-xs">Price</span>
         <Tooltip>
           <TooltipTrigger
             render={
@@ -70,7 +70,7 @@ function BlockedPurchaseAction({
       <TooltipTrigger
         render={<span className={cn("inline-flex cursor-not-allowed outline-none", className)} />}
       >
-        <Button variant={variant} size="panel" className="w-full" disabled focusableWhenDisabled>
+        <Button variant={variant} size="panel" className="h-10 w-full" disabled focusableWhenDisabled>
           {children}
         </Button>
       </TooltipTrigger>
@@ -90,12 +90,12 @@ export function ListingPurchasePanel({ listing, isOwner }: { listing: Listing; i
     ? "You can't buy your own listing."
     : "You can't perform this action as a vendor.";
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 @max-[40rem]/main:flex-row @max-[40rem]/main:items-center @max-[40rem]/main:justify-between @max-[40rem]/main:gap-3">
       <ListingHeroPriceSummary
         listing={listing}
         help="Paid by net-30 invoice, by US bank transfer."
       />
-      <div className="flex flex-col gap-2.5">
+      <div className="flex flex-col gap-2.5 @max-[40rem]/main:relative @max-[40rem]/main:z-20 @max-[40rem]/main:shrink-0 @max-[40rem]/main:flex-row @max-[40rem]/main:gap-2">
         <BlockedPurchaseAction reason={reason}>Buy now</BlockedPurchaseAction>
         <BlockedPurchaseAction
           reason={listing.acceptsOffers ? reason : "The vendor isn't taking offers on this listing."}

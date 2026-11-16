@@ -268,24 +268,44 @@ body {
 @layer utilities {
   /* Listing name in the record hero. */
   .text-record-title {
-    font-size: 1.375rem;
-    line-height: 1.4;
+    font-size: 1.75rem;
+    line-height: 1.2;
     font-weight: 600;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.022em;
+  }
+
+  @container main (min-width: 64rem) {
+    .text-record-title {
+      font-size: 2.125rem;
+      line-height: 1.15;
+      letter-spacing: -0.026em;
+    }
   }
 
   /* The price that leads the purchase panel. */
   .text-price-display {
-    font-size: 2.25rem;
-    line-height: 2.5rem;
+    font-size: 1.875rem;
+    line-height: 2.25rem;
     font-weight: 600;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.024em;
   }
 
   /* The struck-through earlier price and its "N% off" beside the display price. */
   .text-price-was {
-    font-size: 1.125rem;
-    line-height: 1.75rem;
+    font-size: 1rem;
+    line-height: 1.5rem;
+  }
+
+  @container main (width < 40rem) {
+    .text-price-display {
+      font-size: 1.375rem;
+      line-height: 1.75rem;
+    }
+
+    .text-price-was {
+      font-size: 0.875rem;
+      line-height: 1.25rem;
+    }
   }
 
   /* Catalog row: the listing name and its buy-now price. */

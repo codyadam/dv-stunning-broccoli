@@ -90,7 +90,13 @@ function QcVerdictLine({ verdict, brief = false }: { verdict: QcVerdict; brief?:
  * The buyer's readout of every check on the listing: the overall verdict, a row per group of
  * checks, failures called out, and every check by name on demand.
  */
-export function ListingBuyerQualityCard({ listing }: { listing: Listing }) {
+export function ListingBuyerQualityCard({
+  listing,
+  className,
+}: {
+  listing: Listing;
+  className?: string;
+}) {
   const [open, setOpen] = useState(false);
   const groups = checkGroups(listing.qcVerdicts);
   const tally = tallyQcVerdicts(listing.qcVerdicts);
@@ -103,7 +109,7 @@ export function ListingBuyerQualityCard({ listing }: { listing: Listing }) {
     .filter((group) => group.verdicts.length > 0);
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
         <CardTitle>Quality checks</CardTitle>
         {listing.qcCheckedAt ? (

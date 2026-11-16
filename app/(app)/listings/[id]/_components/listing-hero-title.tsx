@@ -28,7 +28,10 @@ export function ListingHeroTitle({
   React.useLayoutEffect(() => {
     const heading = headingRef.current;
     if (!heading) return undefined;
-    const measure = () => setClipped(heading.scrollHeight > heading.clientHeight + 1);
+    const measure = () => {
+      const cap = Number.parseFloat(getComputedStyle(heading).maxHeight);
+      setClipped(heading.clientHeight >= cap - 1 && heading.scrollHeight > heading.clientHeight + 1);
+    };
     measure();
     const observer = new ResizeObserver(measure);
     observer.observe(heading);

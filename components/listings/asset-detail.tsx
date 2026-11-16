@@ -26,18 +26,20 @@ export function AssetDetailHeader({
   kind,
   title,
   titleAs: Title = "h2",
+  icon,
   action,
   figure,
 }: {
   kind: ListingAssetKind;
   title: string;
   titleAs?: "h1" | "h2";
+  icon?: ReactNode;
   action?: ReactNode;
   figure?: ReactNode;
 }) {
   return (
     <div className="flex items-center gap-3">
-      <AssetKindTile kind={kind} />
+      {icon ?? <AssetKindTile kind={kind} />}
       <div className="flex min-w-0 flex-1 items-center gap-1">
         <Title className="min-w-0 text-title text-balance">{title}</Title>
         {action}

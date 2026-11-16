@@ -1,5 +1,7 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
+
 import { ListingDetailView } from "@/app/(app)/listings/[id]/_components/listing-detail-view";
 import { RecordUnavailableView } from "@/components/shell/record-unavailable-view";
 import { ListingRecordPageSkeleton } from "@/components/shell/page-skeletons";
@@ -8,7 +10,12 @@ import { useListingQuery } from "@/lib/fake-api/hooks";
 
 export function ListingRecord({ id }: { id: string }) {
   const listingQuery = useListingQuery(id);
-  if (listingQuery.isPending) return <ListingRecordPageSkeleton />;
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false,
+  );
+  if (listingQuery.isPending) return mounted ? <ListingRecordPageSkeleton /> : null;
   if (listingQuery.isError) {
     const missing = listingQuery.error instanceof ApiError && listingQuery.error.status === 404;
     return (

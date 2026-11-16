@@ -18,10 +18,10 @@ export function KindChip({
   onSelect?: () => void;
 }) {
   const className = cn(
-    "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-xs transition-colors",
+    "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-xs font-medium transition-colors duration-150 ease-out",
     active
-      ? "border-foreground bg-foreground text-background"
-      : "border-border text-muted-foreground hover:bg-accent hover:text-foreground",
+      ? "bg-secondary text-foreground"
+      : "text-muted-foreground hover:bg-accent hover:text-foreground",
   );
   const content = (
     <>
@@ -30,7 +30,7 @@ export function KindChip({
       <span
         className={cn(
           "tabular-nums",
-          active ? "text-background/70" : "text-muted-foreground",
+          active ? "text-muted-foreground" : "text-muted-foreground/70",
         )}
       >
         {count}
