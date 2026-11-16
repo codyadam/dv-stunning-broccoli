@@ -8,6 +8,7 @@ import {
   INVENTORY_VIEW_TABS,
   INVENTORY_VIEW_VALUES,
 } from "@/app/(app)/inventory/_components/inventory-model";
+import { GetListedChecklist } from "@/app/(app)/inventory/_components/get-listed-checklist";
 import { DraftListingsSection } from "@/app/(app)/inventory/_components/draft-listings-section";
 import { InventorySection } from "@/app/(app)/inventory/_components/inventory-view";
 import { MarketSearch } from "@/components/listings/market-browse-frame";
@@ -53,6 +54,7 @@ export function InventoryPageView() {
           label="Asset type"
         />
       </div>
+      <GetListedChecklist />
       <InventorySection
         assetType={params.view}
         query={query}
