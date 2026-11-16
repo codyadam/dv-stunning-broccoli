@@ -38,6 +38,11 @@ export type SmartViewColumn<T> = {
   hideable?: boolean;
   /** Whether a row has no value here; a column empty on every loaded row narrows to its header. */
   isEmpty?: (item: T) => boolean;
+  /**
+   * Takes the width the other columns leave, with its default width as the floor, so a wide
+   * table has no empty band at its end. A width the viewer sets fixes it like any other column.
+   */
+  grow?: boolean;
 };
 
 export type SmartViewSubgroup<T> = {
@@ -113,7 +118,7 @@ const smartViewGroupHeaderClass =
  * A column with its width bound to a CSS variable, when it has a width: a set or dragged
  * width on the frame, or for a `fit` column its header's own width, measured onto the content.
  */
-type SizedColumn<T> = SmartViewColumn<T> & { widthVar?: string; fit?: boolean };
+type SizedColumn<T> = SmartViewColumn<T> & { widthVar?: string; fit?: boolean; grows?: boolean };
 
 function columnWidthVar(index: number): string {
   return `--smart-view-column-${index}`;
@@ -125,9 +130,11 @@ function columnFitVar(index: number): string {
 
 function columnWidthStyle(
   widthVar: string | undefined,
+  grows = false,
 ): React.CSSProperties | undefined {
   if (!widthVar) return undefined;
   const width = `var(${widthVar})`;
+  if (grows) return { minWidth: width, maxWidth: "none", flex: `1 1 ${width}` };
   return { width, minWidth: width, maxWidth: width, flex: "none" };
 }
 
@@ -330,7 +337,7 @@ export function SmartView<T extends { id: string }>({
       if (width == null) return column;
       const widthVar = columnWidthVar(index);
       vars[widthVar] = `${width}px`;
-      return { ...column, widthVar };
+      return { ...column, widthVar, grows: column.grow === true && set == null };
     });
     return { columns: sizedColumns, style: vars as React.CSSProperties };
   }, [columnWidths, columns, defaultColumnWidths, fitColumnIds, resizing]);
@@ -642,7 +649,7 @@ export function SmartView<T extends { id: string }>({
                       <div
                         key={column.id}
                         className={columnHeaderClass(column)}
-                        style={column.fit ? undefined : columnWidthStyle(column.widthVar)}
+                        style={column.fit ? undefined : columnWidthStyle(column.widthVar, column.grows)}
                         data-fit-column={column.fit ? index : undefined}
                       >
                         {titleSort && onSortChange ? (
@@ -1160,7 +1167,7 @@ function LeafRow<T extends { id: string }>({
           <div
             key={column.id}
             className={columnBoxClass(column)}
-            style={columnWidthStyle(column.widthVar)}
+            style={columnWidthStyle(column.widthVar, column.grows)}
             onClick={(event) => {
               const target = event.target as HTMLElement;
               if (

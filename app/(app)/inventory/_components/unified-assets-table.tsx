@@ -140,6 +140,7 @@ const DESCRIPTION_COLUMN: InventoryColumn = {
     <span className="block w-full truncate text-muted-foreground">{asset.description || "—"}</span>
   ),
   isEmpty: (asset) => !asset.description,
+  grow: true,
 };
 
 const DOMAIN_COLUMN: InventoryColumn = {
