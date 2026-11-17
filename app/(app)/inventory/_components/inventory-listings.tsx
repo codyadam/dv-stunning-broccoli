@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { toast } from "sonner";
 import { RiFunctionFill } from "@remixicon/react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 
 import { ListingCatalogList } from "@/components/listings/listing-catalog-list";
-import { ListingAssetPicker } from "@/components/listings/listing-asset-picker";
 import { MarketSearch, MarketFiltersButton, MarketSortMenu, MarketBrowseColumns, MarketInlineFilters, useFiltersOpen, MARKET_ASSET_TABS, marketAssetKinds, marketAssetTypeOf } from "@/components/listings/market-browse-frame";
 import { ListingFilterBar, listingFilterCount, languagesApply, fileTypesApply } from "@/components/listings/listing-filter-bar";
 import { FilterTabs } from "@/components/patterns/filter-tabs";
@@ -16,13 +13,12 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyHeader, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
 import { MarketListingRowsSkeleton } from "@/components/shell/page-skeletons";
 import { StatusMarker } from "@/components/ui/status-marker";
-import { useCreateDraftListingsMutation, useOwnListingsQuery } from "@/lib/fake-api/hooks";
+import { useOwnListingsQuery } from "@/lib/fake-api/hooks";
 import { PageContainer } from "@/components/shell/page-layout";
 import { InventoryActivityTray } from "@/components/inventory/inventory-activity-tray";
 import type { Listing } from "@/lib/fake-api/types";
 import { LISTING_STATUS_LABEL } from "@/lib/listings/listing-edit";
-import { LISTING_STATUS_MARKER, listingEditHref } from "@/lib/listings/routes";
-import { clearOpenSet } from "@/lib/listings/open-set";
+import { LISTING_STATUS_MARKER } from "@/lib/listings/routes";
 import { BROWSE_SORT_OPTIONS, useBrowseFilters } from "@/lib/listings/browse-filters";
 import { inventoryFacets, matchesInventoryFilters } from "@/lib/inventory/filters";
 
@@ -37,9 +33,6 @@ const STATUS_TABS = STATUS_VALUES.map((status) => ({
 }));
 
 export function InventoryListings() {
-  const router = useRouter();
-  const create = useCreateDraftListingsMutation();
-  const [createParam, setCreateParam] = useQueryState("create", parseAsStringLiteral(["1"]));
   const [status, setStatus] = useQueryState("listing_status", parseAsStringLiteral(STATUS_VALUES).withDefault("all"));
   const { filters, search, setFilters } = useBrowseFilters("listing");
   const assetType = marketAssetTypeOf(filters.kinds);
@@ -161,25 +154,6 @@ export function InventoryListings() {
       />
     </section>
     <InventoryActivityTray />
-    <ListingAssetPicker
-      open={createParam === "1"}
-      onOpenChange={(open) => { if (!open) void setCreateParam(null); }}
-      title="Create listing"
-      submitLabel={create.isPending ? "Creating…" : "Create listing"}
-      busy={create.isPending}
-      excludeIds={new Set()}
-      onAdd={(assets) => create.mutate(
-        { assetIds: assets.map((asset) => asset.id), mode: "all" },
-        {
-          onSuccess: async ({ ids }) => {
-            await setCreateParam(null);
-            clearOpenSet();
-            router.push(listingEditHref(ids[0]!, "title"));
-          },
-          onError: (error) => toast.error("Couldn't create listing", { description: error.message }),
-        },
-      )}
-    />
     </PageContainer>
   );
 }

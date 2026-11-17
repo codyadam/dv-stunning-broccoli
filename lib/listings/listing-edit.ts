@@ -50,7 +50,7 @@ export function listingErrors(fields: ListingFields, { submitting }: { submittin
     errors.description = "Write a listing description before submitting for review.";
   }
 
-  if (fields.members.length === 0) errors.assets = "Add at least one asset.";
+  if (submitting && fields.members.length === 0) errors.assets = "Add at least one asset.";
   for (const member of fields.members) {
     const key = memberPriceKey(member.assetId);
     if (member.priceUsd === null) {

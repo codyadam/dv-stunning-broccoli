@@ -246,6 +246,10 @@ export function useUpdateListingMutation() {
   );
 }
 
+export function useCreateListingMutation() {
+  return useListingDraftMutation(api.createListing);
+}
+
 export function useSubmitListingMutation() {
   return useListingDraftMutation((id: string) => api.submitListing(id));
 }

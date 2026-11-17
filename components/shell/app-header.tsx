@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { usePathname } from "next/navigation";
-import { parseAsStringLiteral, useQueryState } from "nuqs";
+import { clearOpenSet } from "@/lib/listings/open-set";
+import { listingEditHref } from "@/lib/listings/routes";
 import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
 import { AppNavbarBreadcrumbs } from "@/components/shell/app-navbar-breadcrumbs";
 import { Button } from "@/components/ui/button";
@@ -12,9 +13,10 @@ import { APP_PANEL_BREADCRUMB_CLASS } from "@/lib/shell/app-panel";
 import { cn } from "@/lib/utils";
 
 function CreateListingButton() {
-  const [, setCreate] = useQueryState("create", parseAsStringLiteral(["1"]));
   return (
-    <Button onClick={() => void setCreate("1")}>Create listing</Button>
+    <Button render={<Link href={listingEditHref("new", "title")} />} onClick={clearOpenSet}>
+      Create listing
+    </Button>
   );
 }
 
@@ -28,7 +30,7 @@ function HeaderAction({ pathname }: { pathname: string }) {
   if (pathname === "/browse") {
     return <Button render={<Link href="/inventory/assets" />}>Sell my assets</Button>;
   }
-  if (pathname === "/inventory/listings") return <Suspense><CreateListingButton /></Suspense>;
+  if (pathname === "/inventory/listings") return <CreateListingButton />;
   if (pathname === "/inventory/assets") {
     return <Suspense><AddAssetButton /></Suspense>;
   }

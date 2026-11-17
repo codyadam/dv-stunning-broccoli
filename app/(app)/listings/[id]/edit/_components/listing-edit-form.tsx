@@ -30,7 +30,7 @@ import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
+import { useCreateListingMutation, useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
 import { LISTING_DESCRIPTION_MIN } from "@/lib/fake-api/qc";
 import type { InventoryAsset, ListingDraft, ListingPatch, QcCheck } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatPrice } from "@/lib/format";
@@ -39,6 +39,7 @@ import { listingKindOfSku } from "@/lib/listings/asset-kinds";
 import {
   LISTING_ONE_LINER_MAX,
   LISTING_TITLE_MAX,
+  DRAFT_LISTING_TITLE,
   listingDisplayTitle,
   listingErrors,
   listingPrice,
@@ -225,12 +226,19 @@ function OpenSetStepper({ ids, current }: { ids: readonly string[]; current: str
  * The listing edit page: copy, assets and their prices, the auto-clearing price, then Submit
  * for review. Edits stay in a draft until **Save changes** (or ⌘S).
  */
-export function ListingEditForm({ listing }: { listing: ListingDraft }) {
+const EMPTY_LISTING: ListingDraft = {
+  id: "", title: DRAFT_LISTING_TITLE, oneLiner: "", description: "",
+  members: [], autoClearingPriceUsd: null, status: "draft", updatedAt: "", latestRun: null,
+};
+
+export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: ListingDraft }) {
+  const creating = listing === EMPTY_LISTING;
   const title = listingDisplayTitle(listing.title);
   useNavbarBreadcrumbPageLabel(title);
   const router = useRouter();
   const searchParams = useSearchParams();
   const update = useUpdateListingMutation();
+  const create = useCreateListingMutation();
   const submit = useSubmitListingMutation();
   const ownListings = useOwnListingsQuery();
   const openSet = useOpenSet(listing.id);
@@ -271,7 +279,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   }, [focus, reveal]);
   const changed = changedKeys(draft, baseline);
   const dirty = changed.length > 0;
-  const saving = update.isPending;
+  const saving = update.isPending || create.isPending || (creating && create.isSuccess);
   const fields = fieldsOf(draft);
   const price = listingPrice(fields.members);
   const completeForReview =
@@ -315,7 +323,6 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
       members: [...current.members, ...assets.map((asset) => ({ assetId: asset.id, price: priceText(asset.priceUsd) }))],
     }));
     clearError("assets");
-    setPickerOpen(false);
   };
 
   const setAutoClearing = (value: string) => {
@@ -338,10 +345,13 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
     }
     saveStatus.saving();
     try {
-      const saved = await update.mutateAsync({ id: listing.id, patch: patchOf(draft, changed) });
+      const saved = creating
+        ? await create.mutateAsync(fields)
+        : await update.mutateAsync({ id: listing.id, patch: patchOf(draft, changed) });
       setDraft(draftOf(saved));
       setFailedKeys([]);
       saveStatus.saved();
+      if (creating) router.replace(listingEditHref(saved.id));
       return true;
     } catch (error) {
       saveStatus.failed();
@@ -430,7 +440,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
                 }
               : status === "draft" && completeForReview
                 ? { kind: "ready_for_review" }
-                : { kind: "saved" };
+                : { kind: creating ? "new" : "saved" };
 
   const rowProps = (key: string) => ({
     field: key,
@@ -443,8 +453,8 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   return (
     <div className="mx-auto flex w-full max-w-160 flex-col gap-8 px-4 pt-8 pb-40">
       <EditBar
-        backHref={listingHref(listing.id)}
-        backLabel="Back to listing"
+        backHref={creating ? "/inventory/listings" : listingHref(listing.id)}
+        backLabel={creating ? "Back to listings" : "Back to listing"}
         title={<EditBarHeading title={title} />}
         saveStatus={saveStatus.status}
         trailing={openSet ? <OpenSetStepper ids={openSet} current={listing.id} /> : null}
@@ -630,7 +640,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         />
       </EditSection>
 
-      {submittable ? (
+      {submittable && !creating ? (
         <section
           {...editFieldMarker("submit", "ownership")}
           aria-labelledby="listing-submit-heading"

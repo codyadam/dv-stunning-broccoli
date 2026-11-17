@@ -1,37 +1,32 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { createDraftListings, getListingDraft, submitListing, updateListing } from "./api";
+import { createListing, getListingDraft, updateListing } from "./api";
 import { readDb } from "./db";
 
-test("listing creation requires assets and rejected changes leave the record intact", async () => {
+test("first-save creation is atomic and supports deliberately unfinished drafts", async () => {
   // Run with Node's --localstorage-file pointing at an isolated test file.
   Object.defineProperty(globalThis, "window", { value: globalThis, configurable: true });
   const before = readDb().listings.length;
-  for (const mode of ["all", "per_asset"] as const) {
-    await assert.rejects(createDraftListings([], mode), /Pick at least one asset/);
-    assert.equal(readDb().listings.length, before);
-  }
-  await assert.rejects(createDraftListings(["ast_dockside", "ast_dockside"], "all"), /only once/);
+  const fields = {
+    title: "Warehouse offering", oneLiner: "", description: "",
+    members: [], autoClearingPriceUsd: null,
+  };
+  await assert.rejects(createListing({ ...fields, title: " " }), /Add a title/);
+  await assert.rejects(createListing({
+    ...fields,
+    members: [{ assetId: "ast_dockside", priceUsd: 18000 }, { assetId: "ast_dockside", priceUsd: 18000 }],
+  }), /only once/);
   assert.equal(readDb().listings.length, before);
 
-  const { ids } = await createDraftListings(["ast_dockside"], "all");
-  assert.equal(ids.length, 1);
-  const original = await getListingDraft(ids[0]!);
-  assert.equal(original.members[0]?.asset.id, "ast_dockside");
-  assert.equal(original.members[0]?.priceUsd, 18000);
-  assert.ok(original.title.trim());
-
-  await assert.rejects(updateListing(original.id, { members: [] }), /Add at least one asset/);
-  await assert.rejects(updateListing(original.id, { title: "  " }), /Add a title/);
-  await assert.rejects(submitListing(original.id), /one-liner/);
-  assert.deepEqual(await getListingDraft(original.id), original);
-
-  const saved = await updateListing(original.id, {
-    title: "Warehouse operations",
-    oneLiner: "Warehouse management codebase",
-    description: "A warehouse operations codebase with receiving, slotting, and wave picking.",
+  const saved = await createListing(fields);
+  assert.equal(readDb().listings.length, before + 1);
+  assert.equal(saved.title, fields.title);
+  assert.equal(saved.members.length, 0);
+  const updated = await updateListing(saved.id, {
+    members: [{ assetId: "ast_dockside", priceUsd: 18000 }],
   });
-  assert.equal(saved.title, "Warehouse operations");
-  assert.equal(saved.members.length, 1);
+  assert.equal(updated.members.length, 1);
+  assert.equal(readDb().listings.length, before + 1);
+  assert.deepEqual(await getListingDraft(saved.id), updated);
 });

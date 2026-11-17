@@ -20,6 +20,7 @@ export type StatusPanelField = { key: string; label: string };
 
 /** What the panel says about the draft, most pressing first. */
 export type StatusPanelState =
+  | { kind: "new" }
   | { kind: "invalid"; fields: StatusPanelField[] }
   | { kind: "save_failed"; fields: StatusPanelField[] }
   | { kind: "unsaved"; fields: StatusPanelField[] }
@@ -68,6 +69,9 @@ export function ListingEditStatusPanel({
 }) {
   let message: React.ReactNode;
   switch (state.kind) {
+    case "new":
+      message = "Not saved yet. Make changes and save to create a draft.";
+      break;
     case "invalid":
       message = (
         <>
