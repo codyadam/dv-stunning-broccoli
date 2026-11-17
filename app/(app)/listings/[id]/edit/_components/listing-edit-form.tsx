@@ -28,7 +28,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
@@ -38,7 +37,6 @@ import { formatBytes, formatCompact, formatPrice } from "@/lib/format";
 import { assetEditHref, assetHref } from "@/lib/inventory/routes";
 import { listingKindOfSku } from "@/lib/listings/asset-kinds";
 import {
-  AUTO_CLEARING_MIN_RATIO,
   LISTING_ONE_LINER_MAX,
   LISTING_TITLE_MAX,
   listingDisplayTitle,
@@ -155,6 +153,7 @@ function UsdInput({
   disabled,
   invalid,
   label,
+  className = "w-36",
 }: {
   id: string;
   value: string;
@@ -163,12 +162,10 @@ function UsdInput({
   disabled: boolean;
   invalid: boolean;
   label?: string;
+  className?: string;
 }) {
   return (
-    <InputGroup className="w-36">
-      <InputGroupAddon align="inline-start">
-        <InputGroupText>USD</InputGroupText>
-      </InputGroupAddon>
+    <InputGroup className={className}>
       <InputGroupInput
         id={id}
         type="number"
@@ -182,6 +179,9 @@ function UsdInput({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      <InputGroupAddon align="inline-end">
+        <InputGroupText>USD</InputGroupText>
+      </InputGroupAddon>
     </InputGroup>
   );
 }
@@ -438,7 +438,6 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   });
   const copyLocked = saving || contentLocked;
   const autoClearing = priceValue(draft.auto_clearing);
-  const sliderMin = Math.round(price * AUTO_CLEARING_MIN_RATIO);
 
   return (
     <div className="mx-auto flex w-full max-w-160 flex-col gap-8 px-4 pt-8 pb-40">
@@ -610,7 +609,6 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
       <EditSection title="Offers">
         <EditFieldRow
           {...rowProps("auto_clearing")}
-          stacked
           label={<label htmlFor="listing-auto-clearing">Auto-clearing price</label>}
           description={
             autoClearing === null
@@ -618,28 +616,15 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
               : "Offers at or above it are accepted automatically. Never shown to buyers."
           }
           control={
-            <div className="flex items-center gap-4">
-              <UsdInput
-                id="listing-auto-clearing"
-                placeholder="Off"
-                value={draft.auto_clearing}
-                disabled={saving || status === "in_review"}
-                invalid={Boolean(errors.auto_clearing)}
-                onChange={setAutoClearing}
-              />
-              {price > 0 ? (
-                <Slider
-                  className="flex-1"
-                  min={sliderMin}
-                  max={price}
-                  step={Math.max(1, Math.round(price / 100))}
-                  value={[Math.min(price, Math.max(sliderMin, autoClearing ?? price))]}
-                  disabled={saving || status === "in_review"}
-                  getThumbAriaLabel={() => "Auto-clearing price"}
-                  onValueChange={(value) => setAutoClearing(String(Array.isArray(value) ? value[0] : value))}
-                />
-              ) : null}
-            </div>
+            <UsdInput
+              id="listing-auto-clearing"
+              className="w-56 sm:w-72"
+              placeholder="Off"
+              value={draft.auto_clearing}
+              disabled={saving || status === "in_review"}
+              invalid={Boolean(errors.auto_clearing)}
+              onChange={setAutoClearing}
+            />
           }
         />
       </EditSection>
