@@ -94,7 +94,7 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
     <PageContainer layout="content" className="relative flex flex-col gap-6">
       {/* In the margin, the arrow's tip level with the first card's top; hidden where the margin is too narrow. */}
       <BackButton
-        fallbackHref="/browse"
+        fallbackHref={isOwner ? "/inventory/listings" : "/browse"}
         className="absolute -top-2.5 right-full mr-3 hidden @min-[71rem]/main:inline-flex"
       />
 
@@ -178,7 +178,7 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
               </CardContent>
             </Card>
           ) : null}
-          <ListingBuyerQualityCard listing={listing} />
+          {listing.qcVerdicts.length > 0 ? <ListingBuyerQualityCard listing={listing} /> : null}
         </aside>
       </div>
     </PageContainer>

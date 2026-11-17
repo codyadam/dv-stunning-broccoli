@@ -6,6 +6,9 @@ import { RiArrowRightLine } from "@remixicon/react";
 import { AssetDeck } from "@/components/listings/asset-deck";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
 import { OrgIdentity } from "@/components/organizations/org-identity";
+import { StatusMarker } from "@/components/ui/status-marker";
+import { LISTING_STATUS_LABEL } from "@/lib/listings/listing-edit";
+import { LISTING_STATUS_MARKER, listingEditHref, listingHref } from "@/lib/listings/routes";
 import type { Listing } from "@/lib/fake-api/types";
 import { formatPrice } from "@/lib/format";
 import { cn } from "@/lib/utils";
@@ -15,9 +18,17 @@ import { cn } from "@/lib/utils";
  * price on the right. An arrow in the bottom-right corner while hovered or focused marks the row
  * as a link.
  */
-export function ListingCatalogRow({ listing }: { listing: Listing }) {
+export function ListingCatalogRow({
+  listing,
+  variant = "catalog",
+}: {
+  listing: Listing;
+  variant?: "catalog" | "inventory";
+}) {
   const router = useRouter();
-  const open = () => router.push(`/listings/${listing.id}`);
+  const status = listing.workspace?.status ?? "live";
+  const inventory = variant === "inventory";
+  const open = () => router.push(inventory && status === "draft" ? listingEditHref(listing.id) : listingHref(listing.id));
 
   return (
     <div
@@ -49,12 +60,19 @@ export function ListingCatalogRow({ listing }: { listing: Listing }) {
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <OrgIdentity
+            {inventory ? (
+              <>
+                <StatusMarker status={LISTING_STATUS_MARKER[status]} label={LISTING_STATUS_LABEL[status]} tooltip={false} />
+                <span className="text-muted-foreground">
+                  {LISTING_STATUS_LABEL[status]} · {listing.assets.length} {listing.assets.length === 1 ? "asset" : "assets"}
+                </span>
+              </>
+            ) : <OrgIdentity
               org={listing.vendor}
               roleLabel="Vendor"
               openListings={listing.vendor.openListings}
               className="text-xs text-foreground/80"
-            />
+            />}
           </span>
         </div>
       </div>
@@ -63,8 +81,10 @@ export function ListingCatalogRow({ listing }: { listing: Listing }) {
         {/* The height holds both lines, so every row is the same height and a price alone
             centers. */}
         <div className="flex min-h-13 min-w-0 flex-col items-end justify-center gap-0.5 text-right">
-          <span className="text-row-price tabular-nums">{formatPrice(listing.buyNowPrice)}</span>
-          {listing.acceptsOffers ? (
+          <span className="text-row-price tabular-nums">
+            {inventory && listing.buyNowPrice === 0 ? "—" : formatPrice(listing.buyNowPrice)}
+          </span>
+          {!inventory && listing.acceptsOffers ? (
             <span className="text-xs text-muted-foreground tabular-nums">Or best offer</span>
           ) : null}
         </div>

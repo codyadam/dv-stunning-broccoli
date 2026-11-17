@@ -68,8 +68,11 @@ export const SEARCH_DEBOUNCE_MS = 250;
  * The browse search, kept in the URL. `search` follows the typed text after a short pause, so a
  * request goes out once typing stops.
  */
-export function useBrowseFilters() {
-  const [params, setParams] = useQueryStates(browseParsers, { history: "replace" });
+export function useBrowseFilters(scope?: string) {
+  const [params, setParams] = useQueryStates(browseParsers, {
+    history: "replace",
+    urlKeys: scope ? Object.fromEntries(Object.keys(browseParsers).map((key) => [key, `${scope}_${key}`])) : undefined,
+  });
   const filters: ListingSearch = React.useMemo(
     () => ({
       query: params.q,

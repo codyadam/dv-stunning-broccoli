@@ -1,12 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { toast } from "sonner";
 
-import { ListingAssetPicker } from "@/app/(app)/listings/[id]/edit/_components/listing-asset-picker";
+import { ListingAssetPicker } from "@/components/listings/listing-asset-picker";
 import {
   ListingEditStatusPanel,
   type StatusPanelState,
@@ -21,25 +22,25 @@ import {
   useSaveStatus,
 } from "@/components/edit-page/use-edit-page";
 import { InventoryAssetStatusMarker } from "@/components/inventory/inventory-asset-status-marker";
+import { InventoryActivityTray } from "@/components/inventory/inventory-activity-tray";
 import { AssetTypeIcon } from "@/components/listings/asset-type-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupText } from "@/components/ui/input-group";
-import { Slider } from "@/components/ui/slider";
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
+import { useCreateListingMutation, useOwnListingsQuery, useSubmitListingMutation, useUpdateListingMutation } from "@/lib/fake-api/hooks";
 import { LISTING_DESCRIPTION_MIN } from "@/lib/fake-api/qc";
 import type { InventoryAsset, ListingDraft, ListingPatch, QcCheck } from "@/lib/fake-api/types";
 import { formatBytes, formatCompact, formatPrice } from "@/lib/format";
 import { assetEditHref, assetHref } from "@/lib/inventory/routes";
 import { listingKindOfSku } from "@/lib/listings/asset-kinds";
 import {
-  AUTO_CLEARING_MIN_RATIO,
   LISTING_ONE_LINER_MAX,
   LISTING_TITLE_MAX,
+  DRAFT_LISTING_TITLE,
   listingDisplayTitle,
   listingErrors,
   listingPrice,
@@ -154,6 +155,7 @@ function UsdInput({
   disabled,
   invalid,
   label,
+  className = "w-36",
 }: {
   id: string;
   value: string;
@@ -162,12 +164,10 @@ function UsdInput({
   disabled: boolean;
   invalid: boolean;
   label?: string;
+  className?: string;
 }) {
   return (
-    <InputGroup className="w-36">
-      <InputGroupAddon align="inline-start">
-        <InputGroupText>USD</InputGroupText>
-      </InputGroupAddon>
+    <InputGroup className={className}>
       <InputGroupInput
         id={id}
         type="number"
@@ -181,6 +181,9 @@ function UsdInput({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      <InputGroupAddon align="inline-end">
+        <InputGroupText>USD</InputGroupText>
+      </InputGroupAddon>
     </InputGroup>
   );
 }
@@ -224,18 +227,25 @@ function OpenSetStepper({ ids, current }: { ids: readonly string[]; current: str
  * The listing edit page: copy, assets and their prices, the auto-clearing price, then Submit
  * for review. Edits stay in a draft until **Save changes** (or ⌘S).
  */
-export function ListingEditForm({ listing }: { listing: ListingDraft }) {
+const EMPTY_LISTING: ListingDraft = {
+  id: "", title: DRAFT_LISTING_TITLE, oneLiner: "", description: "",
+  members: [], autoClearingPriceUsd: null, status: "draft", updatedAt: "", latestRun: null,
+};
+
+export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: ListingDraft }) {
+  const creating = listing === EMPTY_LISTING;
   const title = listingDisplayTitle(listing.title);
   useNavbarBreadcrumbPageLabel(title);
   const router = useRouter();
   const searchParams = useSearchParams();
   const update = useUpdateListingMutation();
+  const create = useCreateListingMutation();
   const submit = useSubmitListingMutation();
   const ownListings = useOwnListingsQuery();
   const openSet = useOpenSet(listing.id);
   const saveStatus = useSaveStatus();
   const reveal = useEditFieldReveal();
-  const baseline = React.useMemo(() => draftOf(listing), [listing]);
+  const baseline = React.useMemo(() => draftOf(create.data ?? listing), [create.data, listing]);
   const [draft, setDraft] = React.useState<Draft>(baseline);
   const [errors, setErrors] = React.useState<ListingErrors>({});
   const [failedKeys, setFailedKeys] = React.useState<string[]>([]);
@@ -270,7 +280,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   }, [focus, reveal]);
   const changed = changedKeys(draft, baseline);
   const dirty = changed.length > 0;
-  const saving = update.isPending;
+  const saving = update.isPending || create.isPending || (creating && create.isSuccess);
   const fields = fieldsOf(draft);
   const price = listingPrice(fields.members);
   const completeForReview =
@@ -323,7 +333,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
 
   const firstKey = (found: ListingErrors) => keyOrder.find((key) => found[key]);
 
-  const save = async (): Promise<boolean> => {
+  const save = async ({ navigate = true }: { navigate?: boolean } = {}): Promise<boolean> => {
     if (!dirty) return true;
     if (saving) return false;
     const nextErrors = listingErrors(fields, { submitting: false });
@@ -336,10 +346,15 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
     }
     saveStatus.saving();
     try {
-      const saved = await update.mutateAsync({ id: listing.id, patch: patchOf(draft, changed) });
-      setDraft(draftOf(saved));
-      setFailedKeys([]);
-      saveStatus.saved();
+      const saved = creating
+        ? await create.mutateAsync(fields)
+        : await update.mutateAsync({ id: listing.id, patch: patchOf(draft, changed) });
+      flushSync(() => {
+        setDraft(draftOf(saved));
+        setFailedKeys([]);
+        saveStatus.saved();
+      });
+      if (creating && navigate) router.replace(listingEditHref(saved.id));
       return true;
     } catch (error) {
       saveStatus.failed();
@@ -392,7 +407,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   const leaveDialog = useUnsavedChangesDialog({
     dirty,
     description: unsavedDescription(changed, labelOf),
-    onSave: save,
+    onSave: () => save({ navigate: false }),
     onDiscard: discard,
   });
 
@@ -428,7 +443,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
                 }
               : status === "draft" && completeForReview
                 ? { kind: "ready_for_review" }
-                : { kind: "saved" };
+                : { kind: creating ? "new" : "saved" };
 
   const rowProps = (key: string) => ({
     field: key,
@@ -437,13 +452,12 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
   });
   const copyLocked = saving || contentLocked;
   const autoClearing = priceValue(draft.auto_clearing);
-  const sliderMin = Math.round(price * AUTO_CLEARING_MIN_RATIO);
 
   return (
     <div className="mx-auto flex w-full max-w-160 flex-col gap-8 px-4 pt-8 pb-40">
       <EditBar
-        backHref={listingHref(listing.id)}
-        backLabel="Back to listing"
+        backHref={creating ? "/inventory/listings" : listingHref(listing.id)}
+        backLabel={creating ? "Back to listings" : "Back to listing"}
         title={<EditBarHeading title={title} />}
         saveStatus={saveStatus.status}
         trailing={openSet ? <OpenSetStepper ids={openSet} current={listing.id} /> : null}
@@ -609,7 +623,6 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
       <EditSection title="Offers">
         <EditFieldRow
           {...rowProps("auto_clearing")}
-          stacked
           label={<label htmlFor="listing-auto-clearing">Auto-clearing price</label>}
           description={
             autoClearing === null
@@ -617,33 +630,20 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
               : "Offers at or above it are accepted automatically. Never shown to buyers."
           }
           control={
-            <div className="flex items-center gap-4">
-              <UsdInput
-                id="listing-auto-clearing"
-                placeholder="Off"
-                value={draft.auto_clearing}
-                disabled={saving || status === "in_review"}
-                invalid={Boolean(errors.auto_clearing)}
-                onChange={setAutoClearing}
-              />
-              {price > 0 ? (
-                <Slider
-                  className="flex-1"
-                  min={sliderMin}
-                  max={price}
-                  step={Math.max(1, Math.round(price / 100))}
-                  value={[Math.min(price, Math.max(sliderMin, autoClearing ?? price))]}
-                  disabled={saving || status === "in_review"}
-                  getThumbAriaLabel={() => "Auto-clearing price"}
-                  onValueChange={(value) => setAutoClearing(String(Array.isArray(value) ? value[0] : value))}
-                />
-              ) : null}
-            </div>
+            <UsdInput
+              id="listing-auto-clearing"
+              className="w-56 sm:w-72"
+              placeholder="Off"
+              value={draft.auto_clearing}
+              disabled={saving || status === "in_review"}
+              invalid={Boolean(errors.auto_clearing)}
+              onChange={setAutoClearing}
+            />
           }
         />
       </EditSection>
 
-      {submittable ? (
+      {submittable && !creating ? (
         <section
           {...editFieldMarker("submit", "ownership")}
           aria-labelledby="listing-submit-heading"
@@ -691,6 +691,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         onSave={() => void save()}
       />
       {leaveDialog}
+      <InventoryActivityTray raised={dirty} />
       <ListingAssetPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}

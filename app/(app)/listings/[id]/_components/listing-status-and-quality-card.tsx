@@ -99,7 +99,7 @@ export function ListingStatusAndQualityCard({
   const runs = listing.qcRuns;
   const latest = runs[0] ?? null;
   const [pickedId, setPickedId] = React.useState<string | null>(null);
-  const picked = runs.find((run) => run.id === pickedId) ?? latest;
+  const picked = runs.find((run) => run.id === pickedId) ?? (status === "draft" ? null : latest);
   const superseded = picked !== null && latest !== null && picked.id !== latest.id;
 
   return (
@@ -126,6 +126,12 @@ export function ListingStatusAndQualityCard({
           ) : null}
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
+          {status === "draft" && latest ? (
+            <p className="text-sm text-muted-foreground">
+              The listing or its assets changed after the last review. Submit again to check the current content.
+              Earlier results remain in run history.
+            </p>
+          ) : null}
           {superseded ? (
             <div className="flex items-center gap-3 rounded-md border border-border bg-muted/50 px-3 py-2 text-sm">
               <p className="min-w-0 flex-1 text-muted-foreground">This run was superseded by a newer submission.</p>

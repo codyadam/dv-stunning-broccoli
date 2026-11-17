@@ -216,6 +216,8 @@ export type InventoryAsset = {
   analysisStatus: AnalysisStatus;
   createdAt: string;
   listings: AssetListingRef[];
+  /** A mutable listing is reviewing or selling this asset's current content. */
+  contentLocked: boolean;
   /** Set on codebases; measured fields stay null until analysis completes. */
   codebase: CodebaseMetadata | null;
   /** Set on raw data. */

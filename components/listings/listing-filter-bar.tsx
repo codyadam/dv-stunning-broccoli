@@ -64,14 +64,20 @@ export function ListingFilterBar({
   onChange,
   open,
   facets,
+  showVerified = true,
+  additionalItems = [],
+  onClear,
 }: {
   filters: ListingSearch;
   onChange: (next: ListingSearch) => void;
   open: boolean;
   /** Browse facet counts; values without listings are left out. */
   facets?: ListingFacets;
+  showVerified?: boolean;
+  additionalItems?: readonly FilterBarItem[];
+  onClear?: (filters: ListingSearch) => void;
 }) {
-  const items: FilterBarItem[] = [];
+  const items: FilterBarItem[] = [...additionalItems];
 
   function listChip(
     id: string,
@@ -153,7 +159,7 @@ export function ListingFilterBar({
       </FilterChip>
     ),
   });
-  items.push({
+  if (showVerified) items.push({
     id: "verified",
     active: filters.verifiedOnly,
     node: (
@@ -166,6 +172,6 @@ export function ListingFilterBar({
   });
 
   return (
-    <FilterBar items={items} open={open} onClear={() => onChange(clearListingFilters(filters))} />
+    <FilterBar items={items} open={open} onClear={() => (onClear ?? onChange)(clearListingFilters(filters))} />
   );
 }

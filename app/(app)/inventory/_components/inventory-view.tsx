@@ -14,16 +14,19 @@ import {
 import {
   inventorySkuOfView,
   inventoryTypeEmptyTitle,
+  INVENTORY_VIEW_TABS,
   type InventoryAssetTypeFilter,
 } from "@/app/(app)/inventory/_components/inventory-model";
 import { SelectionBar } from "@/app/(app)/inventory/_components/selection-bar";
 import { UnifiedAssetsTable } from "@/app/(app)/inventory/_components/unified-assets-table";
-import { AddAssetDialog, OPEN_ADD_ASSET_EVENT } from "@/components/inventory/add-asset-dialog";
+import { AddAssetDialog } from "@/components/inventory/add-asset-dialog";
 import { AddAssetOptions } from "@/components/inventory/add-asset-options";
-import { InventoryActivityProvider } from "@/components/inventory/inventory-activity-provider";
-import { InventoryActivityTray } from "@/components/inventory/inventory-activity-tray";
 import { InventoryPageDropZone } from "@/components/inventory/inventory-page-drop-zone";
+import { ListingFilterBar, listingFilterCount } from "@/components/listings/listing-filter-bar";
+import { MarketBrowseColumns, MarketInlineFilters, MarketFiltersButton, useFiltersOpen } from "@/components/listings/market-browse-frame";
+import { inventoryFacets, matchesInventoryFilters } from "@/lib/inventory/filters";
 import type { SmartViewGroup } from "@/components/patterns/smart-view";
+import { FilterChip, FilterOptionList } from "@/components/patterns/filter-bar";
 import type { SmartViewSort } from "@/components/patterns/smart-view-column-menu";
 import { InventoryTableSkeleton } from "@/components/shell/page-skeletons";
 import {
@@ -46,10 +49,10 @@ import {
   useInventoryQuery,
   useMoveAssetsMutation,
 } from "@/lib/fake-api/hooks";
-import type { DraftListingMode, InventoryAsset, InventoryGroup, InventorySort } from "@/lib/fake-api/types";
+import type { DraftListingMode, InventoryAsset, InventoryGroup, InventorySort, ListingSearch } from "@/lib/fake-api/types";
 import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
 import { assetEditHref } from "@/lib/inventory/routes";
-import { isListable } from "@/lib/inventory/status";
+import { inventoryStatus, isListable, type InventoryStatus } from "@/lib/inventory/status";
 import { PER_ASSET_DRAFT_LIMIT } from "@/lib/listings/listing-edit";
 import { clearOpenSet, startOpenSet } from "@/lib/listings/open-set";
 import { listingEditHref } from "@/lib/listings/routes";
@@ -57,11 +60,14 @@ import { useSourcePickerParams } from "@/lib/sources/source-picker-params";
 
 type InventorySectionProps = {
   assetType: InventoryAssetTypeFilter;
+  status: InventoryStatus | "all";
   query: string;
   sort: InventorySort;
   onSortChange: (sort: InventorySort) => void;
   selectedIds: ReadonlySet<string>;
   onSelectionChange: (selectedIds: Set<string>) => void;
+  filters: ListingSearch;
+  onFiltersChange: (filters: ListingSearch) => void;
 };
 
 function tableSortOf(sort: InventorySort): SmartViewSort | null {
@@ -79,22 +85,24 @@ function errorMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
 }
 
-/** Inventory's **Assets**: the vendor's assets in their groups, with adding, grouping and deleting. */
-export function InventorySection(props: InventorySectionProps) {
-  return (
-    <InventoryActivityProvider>
-      <InventoryAssets {...props} />
-    </InventoryActivityProvider>
-  );
-}
+const filterValues = (asset: InventoryAsset) => ({
+  languages: asset.codebase?.languages ?? [],
+  fileExtensions: Object.keys(asset.rawData?.extensions ?? {}),
+  domains: asset.domainTags,
+  price: asset.priceUsd,
+});
 
-function InventoryAssets({
+/** Inventory's **Assets**: the vendor's assets in their groups, with adding, grouping and deleting. */
+export function InventorySection({
   assetType,
+  status,
   query,
   sort,
   onSortChange,
   selectedIds,
   onSelectionChange,
+  filters,
+  onFiltersChange,
 }: InventorySectionProps) {
   const inventoryQuery = useInventoryQuery({ query, sku: inventorySkuOfView(assetType), sort });
   const createGroup = useCreateGroupMutation();
@@ -116,7 +124,16 @@ function InventoryAssets({
   const [columnWidths, setColumnWidth] = useInventoryColumnWidths(assetType);
   const hiddenColumnIds = hiddenColumnsByType[assetType];
 
-  const assets = React.useMemo(() => inventoryQuery.data?.assets ?? [], [inventoryQuery.data]);
+  const [filtersOpen, setFiltersOpen] = useFiltersOpen(status);
+  const scopedAssets = (inventoryQuery.data?.assets ?? []).filter((asset) =>
+    status === "all" || inventoryStatus(asset) === status);
+  const facets = inventoryFacets(scopedAssets.map(filterValues));
+  const assets = React.useMemo(
+    () => (inventoryQuery.data?.assets ?? []).filter((asset) =>
+      (status === "all" || inventoryStatus(asset) === status) &&
+      matchesInventoryFilters(filterValues(asset), filters)),
+    [inventoryQuery.data, filters, status],
+  );
   const inventoryGroups = React.useMemo(
     () => inventoryQuery.data?.groups ?? [],
     [inventoryQuery.data],
@@ -125,15 +142,6 @@ function InventoryAssets({
   const clearSelection = () => onSelectionChange(new Set());
 
   const addAssetDialogOpen = addParam === "1" || droppedZip !== null;
-
-  React.useEffect(() => {
-    const handleOpen = () => {
-      void setAddWizard({ kind: null, source: null });
-      void setAddParam("1");
-    };
-    window.addEventListener(OPEN_ADD_ASSET_EVENT, handleOpen);
-    return () => window.removeEventListener(OPEN_ADD_ASSET_EVENT, handleOpen);
-  }, [setAddParam, setAddWizard]);
 
   // A zip dropped on the page is raw data; the dialog opens on that step so the rule is visible.
   const handleDropZip = React.useCallback(
@@ -265,40 +273,16 @@ function InventoryAssets({
   };
 
   const heading = (
-    <h2 className="text-heading">
-      Assets
-      {total > 0 ? (
-        <span className="ml-2 font-normal text-muted-foreground tabular-nums">
-          {total.toLocaleString("en-US")}
-        </span>
-      ) : null}
-    </h2>
+    <p className="min-w-0 text-sm text-muted-foreground tabular-nums">
+      {inventoryQuery.data ? <>
+        <span className="text-foreground">{assets.length.toLocaleString("en-US")}</span>
+        {assets.length === total ? " assets" : <> matching out of <span className="text-foreground">{total.toLocaleString("en-US")}</span> assets</>}
+      </> : null}
+    </p>
   );
 
-  const tray = <InventoryActivityTray raised={selectedIds.size > 0} />;
-
-  if (inventoryQuery.isError) {
-    return (
-      <section className="flex flex-col gap-4">
-        {heading}
-        <Empty list>
-          <EmptyHeader>
-            <EmptyTitle>Couldn&apos;t load inventory</EmptyTitle>
-            <EmptyDescription>{errorMessage(inventoryQuery.error, "Inventory failed to load.")}</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <Button variant="outline" size="sm" onClick={() => void inventoryQuery.refetch()}>
-              Retry
-            </Button>
-          </EmptyContent>
-        </Empty>
-        {tray}
-      </section>
-    );
-  }
-
   const searching = query.trim().length > 0;
-  const hasActiveFilters = searching || assetType !== "all";
+  const hasActiveFilters = searching || status !== "all" || assetType !== "all" || listingFilterCount(filters) > 0;
   const hasInventory = total > 0;
   const showInventoryChrome = hasInventory || hasActiveFilters;
 
@@ -308,11 +292,33 @@ function InventoryAssets({
       disabled={addAssetDialogOpen}
       className="flex flex-col"
     >
-      <section className="flex flex-col gap-4">
+      <MarketBrowseColumns contentKey={status} resultCount={assets.length}
+        filters={<ListingFilterBar filters={filters} onChange={onFiltersChange} open={filtersOpen} facets={facets} showVerified={false}
+          onClear={(next) => onFiltersChange({ ...next, kinds: [] })}
+          additionalItems={[{
+            id: "asset-type",
+            active: filters.kinds.length > 0,
+            node: <FilterChip label="Asset type"
+              value={assetType === "all" ? null : INVENTORY_VIEW_TABS.find((tab) => tab.id === assetType)!.label}
+              onClear={() => onFiltersChange({ ...filters, kinds: [], languages: [], fileExtensions: [] })}>
+              <FilterOptionList label="Asset type" options={INVENTORY_VIEW_TABS.filter((tab) => tab.id !== "all")}
+                selected={assetType === "all" ? [] : [assetType]}
+                onChange={(selected) => onFiltersChange({
+                  ...filters,
+                  kinds: selected.length === 0 ? [] : [selected[0] === "codebase" ? "repo" : "zip"],
+                  languages: [], fileExtensions: [],
+                })}
+              />
+            </FilterChip>,
+          }]}
+        />}
+        results={
+      <section className="flex flex-col gap-3">
         <div className="flex min-h-8 items-center justify-between gap-3">
           {heading}
           {showInventoryChrome ? (
             <div className="flex shrink-0 items-center gap-1">
+              <MarketFiltersButton active={listingFilterCount(filters) + Number(filters.kinds.length > 0)} open={filtersOpen} onToggle={() => setFiltersOpen(!filtersOpen)} />
               <NewGroupButton onClick={() => setCreateGroupOpen(true)} />
               <InventoryColumnsMenu
                 assetType={assetType}
@@ -324,9 +330,20 @@ function InventoryAssets({
             </div>
           ) : null}
         </div>
+        <MarketInlineFilters />
 
         {inventoryQuery.isPending ? (
           <InventoryTableSkeleton />
+        ) : inventoryQuery.isError ? (
+          <Empty list role="alert">
+            <EmptyHeader>
+              <EmptyTitle>Couldn&apos;t load inventory</EmptyTitle>
+              <EmptyDescription>{errorMessage(inventoryQuery.error, "Inventory failed to load.")}</EmptyDescription>
+            </EmptyHeader>
+            <EmptyContent>
+              <Button variant="outline" size="sm" onClick={() => void inventoryQuery.refetch()}>Retry</Button>
+            </EmptyContent>
+          </Empty>
         ) : assets.length > 0 ? (
           <div className="flex min-h-0 flex-col">
             <UnifiedAssetsTable
@@ -354,9 +371,9 @@ function InventoryAssets({
           <Empty list>
             <EmptyHeader>
               <EmptyTitle>
-                {searching ? "No inventory items match these filters" : inventoryTypeEmptyTitle(assetType)}
+                {searching || status !== "all" || listingFilterCount(filters) > 0 ? "No inventory items match these filters" : inventoryTypeEmptyTitle(assetType)}
               </EmptyTitle>
-              {searching ? <EmptyDescription>No assets match the active filters.</EmptyDescription> : null}
+              {searching || status !== "all" || listingFilterCount(filters) > 0 ? <EmptyDescription>No assets match the active filters.</EmptyDescription> : null}
             </EmptyHeader>
           </Empty>
         ) : (
@@ -365,6 +382,8 @@ function InventoryAssets({
           </div>
         )}
       </section>
+        }
+      />
 
       <SelectionBar
         selectedCount={selectedIds.size}
@@ -452,7 +471,6 @@ function InventoryAssets({
         onOpenChange={handleAddAssetOpenChange}
         initialFile={droppedZip}
       />
-      {tray}
     </InventoryPageDropZone>
   );
 }

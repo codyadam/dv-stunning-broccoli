@@ -275,7 +275,7 @@ function toOwnListing(record: ListingRecord, now: number): Listing {
     return asset ? [toListingAsset(asset, member.priceUsd)] : [];
   });
   const runs = qcRunViews(record, now);
-  const latest = runs[0] ?? null;
+  const latest = status === "draft" ? null : runs[0] ?? null;
   const finished = latest?.status === "completed" ? latest : null;
   const domainTags = [
     ...new Set(
@@ -327,17 +327,18 @@ function findListing(id: string, now: number): Listing | undefined {
 function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
   const status = analysisStatus(record, now);
   const measured = status === "complete";
+  const ownListings = readDb().listings
+    .filter((listing) => listing.members.some((member) => member.assetId === record.id))
+    .map((listing) => ({
+      id: listing.id,
+      title: listingDisplayTitle(listing.title),
+      status: listingStatus(listing, now),
+    }));
   const listings: AssetListingRef[] = [
     ...LISTINGS.filter((listing) =>
       listing.assets.some((asset) => asset.inventoryAssetId === record.id),
     ).map((listing) => ({ id: listing.id, title: listing.title, status: "live" as const })),
-    ...readDb()
-      .listings.filter((listing) => listing.members.some((member) => member.assetId === record.id))
-      .map((listing) => ({
-        id: listing.id,
-        title: listingDisplayTitle(listing.title),
-        status: listingStatus(listing, now),
-      })),
+    ...ownListings,
   ];
   const { codebase, rawData } = record;
   const missing = [
@@ -358,6 +359,7 @@ function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
     analysisStatus: status,
     createdAt: record.createdAt,
     listings,
+    contentLocked: ownListings.some((listing) => listing.status === "in_review" || listing.status === "live"),
     codebase: codebase
       ? {
           channel: codebase.channel,
@@ -694,6 +696,10 @@ export async function updateAsset(id: string, patch: AssetPatch): Promise<Invent
   await delay();
   const record = requireRecord(id);
   const now = Date.now();
+  const changesContent = Object.keys(patch).some((key) => key !== "priceUsd");
+  if (changesContent && toInventoryAsset(record, now).contentLocked) {
+    throw new ApiError("Wait for listing review to finish and hide any live listings before editing this asset's details.", 409);
+  }
   if (analysisStatus(record, now) !== "complete" && Object.keys(patch).some((key) => key !== "title")) {
     throw new ApiError("Wait for the analysis to finish before editing this asset.", 409);
   }
@@ -711,6 +717,12 @@ export async function updateAsset(id: string, patch: AssetPatch): Promise<Invent
   writeDb((db) => ({
     ...db,
     assets: db.assets.map((candidate) => (candidate.id === id ? next : candidate)),
+    listings: db.listings.map((listing) =>
+      changesContent && listingStatus(listing, now) === "ready" &&
+      listing.members.some((member) => member.assetId === id)
+        ? { ...listing, status: "draft", updatedAt: new Date(now).toISOString() }
+        : listing,
+    ),
   }));
   return toInventoryAsset(next, now);
 }
@@ -819,8 +831,8 @@ function newListingRecord(assets: readonly AssetRecord[], now: number): ListingR
 }
 
 /**
- * Creates draft listings from inventory assets: one per asset, or one holding them all. Asking
- * prices prefill the listing prices.
+ * Creates draft listings: one per asset, or one holding them all. A combined draft can start
+ * empty. Asking prices prefill member prices when assets are supplied.
  */
 export async function createDraftListings(
   assetIds: readonly string[],
@@ -828,10 +840,15 @@ export async function createDraftListings(
 ): Promise<{ ids: string[]; notCreated: number }> {
   await delay();
   const now = Date.now();
+  if (new Set(assetIds).size !== assetIds.length) {
+    throw new ApiError("An asset can be in a listing only once.", 400);
+  }
   const assets = assetIds.map(requireRecord);
   const unlistable = assets.find((asset) => !listableRecord(asset, now));
   if (unlistable) throw new ApiError(`“${unlistable.title}” has no analyzed data to list yet.`, 409);
-  if (assets.length === 0) throw new ApiError("Pick at least one asset to list.", 400);
+  if (assets.length === 0 && mode === "per_asset") {
+    throw new ApiError("Pick at least one asset to list.", 400);
+  }
   const groups = mode === "all" ? [assets] : assets.slice(0, PER_ASSET_DRAFT_LIMIT).map((asset) => [asset]);
   const records = groups.map((group) => newListingRecord(group, now));
   writeDb((db) => ({ ...db, listings: [...records, ...db.listings] }));
@@ -843,7 +860,12 @@ export async function createDraftListings(
 export async function listOwnListings(): Promise<Listing[]> {
   await delay();
   const now = Date.now();
-  return readDb().listings.map((record) => toOwnListing(record, now));
+  return [
+    ...LISTINGS.filter((listing) => listing.vendor.id === DEMO_VENDOR_ID),
+    ...readDb().listings.map((record) => toOwnListing(record, now)),
+  ].sort((a, b) =>
+    (b.workspace?.createdAt ?? b.postedAt).localeCompare(a.workspace?.createdAt ?? a.postedAt),
+  );
 }
 
 export async function getListingDraft(id: string): Promise<ListingDraft> {
@@ -859,7 +881,21 @@ export async function getListingDraft(id: string): Promise<ListingDraft> {
 export async function updateListing(id: string, patch: ListingPatch): Promise<ListingDraft> {
   await delay();
   const now = Date.now();
-  const record = requireListingRecord(id);
+  const next = patchedListingRecord(requireListingRecord(id), patch, now);
+  saveListingRecord(next);
+  return toListingDraft(next, now);
+}
+
+/** Persists a new editor draft only when its first changes are saved. */
+export async function createListing(fields: ListingFields): Promise<ListingDraft> {
+  await delay();
+  const now = Date.now();
+  const next = patchedListingRecord(newListingRecord([], now), { ...fields, members: [...fields.members] }, now);
+  writeDb((db) => ({ ...db, listings: [next, ...db.listings] }));
+  return toListingDraft(next, now);
+}
+
+function patchedListingRecord(record: ListingRecord, patch: ListingPatch, now: number): ListingRecord {
   const status = listingStatus(record, now);
   const changesContent = Object.keys(patch).some((key) => key !== "autoClearingPriceUsd");
   if (status === "in_review") throw new ApiError("Quality checks are still running.", 409);
@@ -897,8 +933,7 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
     status: status === "ready" && changesContent ? "draft" : status,
     updatedAt: new Date(now).toISOString(),
   };
-  saveListingRecord(next);
-  return toListingDraft(next, now);
+  return next;
 }
 
 /**

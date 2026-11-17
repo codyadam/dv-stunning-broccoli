@@ -50,7 +50,7 @@ export function ListingManageCard({ listing, status }: { listing: Listing; statu
       onSuccess: () => {
         setDeleteOpen(false);
         toast.success("Listing deleted");
-        router.push("/inventory");
+        router.push("/inventory/listings");
       },
       onError: (error) => toast.error(error.message),
     });

@@ -107,6 +107,7 @@ const COUNT_FIELDS = ["lines_of_code", "commits", "contributors"] as const;
 
 /** Which fields `asset` lets the vendor edit: copy always, measured fields once analysis is done. */
 function editableFields(asset: InventoryAsset): Set<Field> {
+  if (asset.contentLocked) return new Set<Field>(["price_usd"]);
   const fields = new Set<Field>(["title"]);
   if (isAnalyzing(asset)) return fields;
   for (const field of ["description", "domain_tags", "price_usd"] as const) fields.add(field);
@@ -281,7 +282,8 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   const saveStatus = useSaveStatus();
   const reveal = useEditFieldReveal();
   const baseline = React.useMemo(() => draftOf(asset), [asset]);
-  const [draft, setDraft] = React.useState<Draft>(baseline);
+  const [edits, setEdits] = React.useState<Partial<Draft>>({});
+  const draft = { ...baseline, ...edits };
   const [errors, setErrors] = React.useState<Errors>({});
   const editable = editableFields(asset);
   const fields = Object.keys(FIELD_LABELS) as Field[];
@@ -295,7 +297,7 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   }, [focus, reveal]);
 
   const setField = <F extends Field>(field: F, value: Draft[F]) => {
-    setDraft((current) => ({ ...current, [field]: value }));
+    setEdits((current) => ({ ...current, [field]: value }));
     setErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
     saveStatus.clearFailure();
   };
@@ -313,8 +315,8 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
     }
     saveStatus.saving();
     try {
-      const saved = await update.mutateAsync({ id: asset.id, patch: patchOf(draft, changed) });
-      setDraft(draftOf(saved));
+      await update.mutateAsync({ id: asset.id, patch: patchOf(draft, changed) });
+      setEdits({});
       saveStatus.saved();
       return true;
     } catch (error) {
@@ -326,7 +328,7 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   };
 
   const discard = () => {
-    setDraft(baseline);
+    setEdits({});
     setErrors({});
     saveStatus.clearFailure();
   };
@@ -363,6 +365,13 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner className="size-3.5" />
           Reading the linked data. The rest of this asset can be edited when it finishes.
+        </p>
+      ) : null}
+      {asset.contentLocked ? (
+        <p className="text-sm text-muted-foreground">
+          These details are used by a listing in review or on the marketplace. Wait for review
+          to finish and hide any live listings to edit them. The asking price can still change;
+          existing listing prices stay the same.
         </p>
       ) : null}
 

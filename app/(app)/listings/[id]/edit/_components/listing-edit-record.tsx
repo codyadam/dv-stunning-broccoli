@@ -1,6 +1,7 @@
 "use client";
 
 import { ListingEditForm } from "@/app/(app)/listings/[id]/edit/_components/listing-edit-form";
+import { InventoryActivityProvider } from "@/components/inventory/inventory-activity-provider";
 import { RecordUnavailableView } from "@/components/shell/record-unavailable-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/fake-api/api";
@@ -31,11 +32,15 @@ export function ListingEditRecord({ listingId }: { listingId: string }) {
         description={
           missing ? "Only listings you composed from your inventory can be edited here." : draftQuery.error.message
         }
-        href="/inventory"
+        href="/inventory/listings"
         action="Back to inventory"
         onRetry={missing ? undefined : () => void draftQuery.refetch()}
       />
     );
   }
-  return <ListingEditForm key={draftQuery.data.id} listing={draftQuery.data} />;
+  return (
+    <InventoryActivityProvider>
+      <ListingEditForm key={draftQuery.data.id} listing={draftQuery.data} />
+    </InventoryActivityProvider>
+  );
 }

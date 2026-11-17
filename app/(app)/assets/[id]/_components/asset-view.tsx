@@ -155,7 +155,7 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
     <PageContainer layout="content" className="relative flex flex-col gap-6">
       {/* In the margin, the arrow's tip level with the first card's top; hidden where the margin is too narrow. */}
       <BackButton
-        fallbackHref="/inventory"
+        fallbackHref="/inventory/assets"
         className="absolute -top-2.5 right-full mr-3 hidden @min-[71rem]/main:inline-flex"
       />
 

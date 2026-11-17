@@ -3,12 +3,6 @@
 import { AddAssetOptions } from "@/components/inventory/add-asset-options";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
-export const OPEN_ADD_ASSET_EVENT = "datavendor.inventory.openAddAsset";
-
-export function dispatchOpenAddAsset(): void {
-  window.dispatchEvent(new CustomEvent(OPEN_ADD_ASSET_EVENT));
-}
-
 export function AddAssetDialog({
   open,
   onOpenChange,
