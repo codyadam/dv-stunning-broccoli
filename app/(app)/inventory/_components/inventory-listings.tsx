@@ -25,7 +25,7 @@ import { inventoryFacets, matchesInventoryFilters } from "@/lib/inventory/filter
 const STATUS_VALUES = ["all", "draft", "in_review", "needs_fixes", "ready", "live"] as const;
 const STATUS_TABS = STATUS_VALUES.map((status) => ({
   id: status,
-  label: status === "all" ? "All statuses" : LISTING_STATUS_LABEL[status],
+  label: status === "all" ? "All" : LISTING_STATUS_LABEL[status],
   icon: status === "all" ? <RiFunctionFill className="size-7" /> : (
     <StatusMarker status={LISTING_STATUS_MARKER[status]} label={LISTING_STATUS_LABEL[status]}
       tooltip={false} iconClassName="size-7" />
