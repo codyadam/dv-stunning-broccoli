@@ -107,6 +107,7 @@ const COUNT_FIELDS = ["lines_of_code", "commits", "contributors"] as const;
 
 /** Which fields `asset` lets the vendor edit: copy always, measured fields once analysis is done. */
 function editableFields(asset: InventoryAsset): Set<Field> {
+  if (asset.contentLocked) return new Set<Field>(["price_usd"]);
   const fields = new Set<Field>(["title"]);
   if (isAnalyzing(asset)) return fields;
   for (const field of ["description", "domain_tags", "price_usd"] as const) fields.add(field);
@@ -363,6 +364,13 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
         <p className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner className="size-3.5" />
           Reading the linked data. The rest of this asset can be edited when it finishes.
+        </p>
+      ) : null}
+      {asset.contentLocked ? (
+        <p className="text-sm text-muted-foreground">
+          These details are used by a listing in review or on the marketplace. Wait for review
+          to finish and hide any live listings to edit them. The asking price can still change;
+          existing listing prices stay the same.
         </p>
       ) : null}
 

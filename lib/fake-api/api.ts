@@ -275,7 +275,7 @@ function toOwnListing(record: ListingRecord, now: number): Listing {
     return asset ? [toListingAsset(asset, member.priceUsd)] : [];
   });
   const runs = qcRunViews(record, now);
-  const latest = runs[0] ?? null;
+  const latest = status === "draft" ? null : runs[0] ?? null;
   const finished = latest?.status === "completed" ? latest : null;
   const domainTags = [
     ...new Set(
@@ -327,17 +327,18 @@ function findListing(id: string, now: number): Listing | undefined {
 function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
   const status = analysisStatus(record, now);
   const measured = status === "complete";
+  const ownListings = readDb().listings
+    .filter((listing) => listing.members.some((member) => member.assetId === record.id))
+    .map((listing) => ({
+      id: listing.id,
+      title: listingDisplayTitle(listing.title),
+      status: listingStatus(listing, now),
+    }));
   const listings: AssetListingRef[] = [
     ...LISTINGS.filter((listing) =>
       listing.assets.some((asset) => asset.inventoryAssetId === record.id),
     ).map((listing) => ({ id: listing.id, title: listing.title, status: "live" as const })),
-    ...readDb()
-      .listings.filter((listing) => listing.members.some((member) => member.assetId === record.id))
-      .map((listing) => ({
-        id: listing.id,
-        title: listingDisplayTitle(listing.title),
-        status: listingStatus(listing, now),
-      })),
+    ...ownListings,
   ];
   const { codebase, rawData } = record;
   const missing = [
@@ -358,6 +359,7 @@ function toInventoryAsset(record: AssetRecord, now: number): InventoryAsset {
     analysisStatus: status,
     createdAt: record.createdAt,
     listings,
+    contentLocked: ownListings.some((listing) => listing.status === "in_review" || listing.status === "live"),
     codebase: codebase
       ? {
           channel: codebase.channel,
@@ -694,6 +696,10 @@ export async function updateAsset(id: string, patch: AssetPatch): Promise<Invent
   await delay();
   const record = requireRecord(id);
   const now = Date.now();
+  const changesContent = Object.keys(patch).some((key) => key !== "priceUsd");
+  if (changesContent && toInventoryAsset(record, now).contentLocked) {
+    throw new ApiError("Wait for listing review to finish and hide any live listings before editing this asset's details.", 409);
+  }
   if (analysisStatus(record, now) !== "complete" && Object.keys(patch).some((key) => key !== "title")) {
     throw new ApiError("Wait for the analysis to finish before editing this asset.", 409);
   }
@@ -711,6 +717,12 @@ export async function updateAsset(id: string, patch: AssetPatch): Promise<Invent
   writeDb((db) => ({
     ...db,
     assets: db.assets.map((candidate) => (candidate.id === id ? next : candidate)),
+    listings: db.listings.map((listing) =>
+      changesContent && listingStatus(listing, now) === "ready" &&
+      listing.members.some((member) => member.assetId === id)
+        ? { ...listing, status: "draft", updatedAt: new Date(now).toISOString() }
+        : listing,
+    ),
   }));
   return toInventoryAsset(next, now);
 }

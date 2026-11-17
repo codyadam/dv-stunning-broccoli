@@ -41,7 +41,7 @@ function FieldLinks({
   return (
     <>
       {shown.map((field, index) => (
-        <React.Fragment key={field.key}>
+        <React.Fragment key={`${field.key}:${field.label}`}>
           {index > 0 ? (index === shown.length - 1 && rest === 0 ? " and " : ", ") : null}
           <button
             type="button"

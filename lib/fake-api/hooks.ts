@@ -37,6 +37,7 @@ const queryKeys = {
   listingAll: ["listing"] as const,
   listing: (id: string) => ["listing", id] as const,
   ownListings: ["own-listings"] as const,
+  listingDraftAll: ["listing-draft"] as const,
   listingDraft: (id: string) => ["listing-draft", id] as const,
   inventory: (search: InventorySearch) => ["inventory", search] as const,
   inventoryAll: ["inventory"] as const,
@@ -105,8 +106,10 @@ export function useAssetQuery(id: string) {
   return useQuery({
     queryKey: queryKeys.asset(id),
     queryFn: () => api.getAsset(id),
-    refetchInterval: (query) =>
-      query.state.data && analyzing(query.state.data) ? ASSET_ANALYSIS_POLL_MS : false,
+    refetchInterval: (query) => {
+      if (query.state.data?.listings.some((listing) => listing.status === "in_review")) return LISTING_REVIEW_POLL_MS;
+      return query.state.data && analyzing(query.state.data) ? ASSET_ANALYSIS_POLL_MS : false;
+    },
   });
 }
 
@@ -166,11 +169,12 @@ export function useConnectForgeMutation() {
 
 export function useUpdateAssetMutation() {
   const queryClient = useQueryClient();
+  const invalidate = useInvalidateListings();
   return useMutation({
     mutationFn: ({ id, patch }: { id: string; patch: AssetPatch }) => api.updateAsset(id, patch),
     onSuccess: (asset) => {
       queryClient.setQueryData(queryKeys.asset(asset.id), asset);
-      return queryClient.invalidateQueries({ queryKey: queryKeys.inventoryAll });
+      return invalidate();
     },
   });
 }
@@ -214,6 +218,7 @@ function useInvalidateListings() {
         queryKeys.listingsAll,
         queryKeys.listingAll,
         queryKeys.ownListings,
+        queryKeys.listingDraftAll,
         queryKeys.inventoryAll,
         queryKeys.assetAll,
       ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
