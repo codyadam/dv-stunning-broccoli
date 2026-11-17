@@ -282,7 +282,8 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   const saveStatus = useSaveStatus();
   const reveal = useEditFieldReveal();
   const baseline = React.useMemo(() => draftOf(asset), [asset]);
-  const [draft, setDraft] = React.useState<Draft>(baseline);
+  const [edits, setEdits] = React.useState<Partial<Draft>>({});
+  const draft = { ...baseline, ...edits };
   const [errors, setErrors] = React.useState<Errors>({});
   const editable = editableFields(asset);
   const fields = Object.keys(FIELD_LABELS) as Field[];
@@ -296,7 +297,7 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   }, [focus, reveal]);
 
   const setField = <F extends Field>(field: F, value: Draft[F]) => {
-    setDraft((current) => ({ ...current, [field]: value }));
+    setEdits((current) => ({ ...current, [field]: value }));
     setErrors((current) => (current[field] ? { ...current, [field]: undefined } : current));
     saveStatus.clearFailure();
   };
@@ -314,8 +315,8 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
     }
     saveStatus.saving();
     try {
-      const saved = await update.mutateAsync({ id: asset.id, patch: patchOf(draft, changed) });
-      setDraft(draftOf(saved));
+      await update.mutateAsync({ id: asset.id, patch: patchOf(draft, changed) });
+      setEdits({});
       saveStatus.saved();
       return true;
     } catch (error) {
@@ -327,7 +328,7 @@ export function AssetEditForm({ asset }: { asset: InventoryAsset }) {
   };
 
   const discard = () => {
-    setDraft(baseline);
+    setEdits({});
     setErrors({});
     saveStatus.clearFailure();
   };

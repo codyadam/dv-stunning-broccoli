@@ -178,7 +178,7 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
               </CardContent>
             </Card>
           ) : null}
-          <ListingBuyerQualityCard listing={listing} />
+          {listing.qcVerdicts.length > 0 ? <ListingBuyerQualityCard listing={listing} /> : null}
         </aside>
       </div>
     </PageContainer>
