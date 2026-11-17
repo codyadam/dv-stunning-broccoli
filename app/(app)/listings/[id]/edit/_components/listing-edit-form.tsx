@@ -332,7 +332,7 @@ export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: Listing
 
   const firstKey = (found: ListingErrors) => keyOrder.find((key) => found[key]);
 
-  const save = async (): Promise<boolean> => {
+  const save = async ({ navigate = true }: { navigate?: boolean } = {}): Promise<boolean> => {
     if (!dirty) return true;
     if (saving) return false;
     const nextErrors = listingErrors(fields, { submitting: false });
@@ -351,7 +351,7 @@ export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: Listing
       setDraft(draftOf(saved));
       setFailedKeys([]);
       saveStatus.saved();
-      if (creating) router.replace(listingEditHref(saved.id));
+      if (creating && navigate) router.replace(listingEditHref(saved.id));
       return true;
     } catch (error) {
       saveStatus.failed();
@@ -404,7 +404,7 @@ export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: Listing
   const leaveDialog = useUnsavedChangesDialog({
     dirty,
     description: unsavedDescription(changed, labelOf),
-    onSave: save,
+    onSave: () => save({ navigate: false }),
     onDiscard: discard,
   });
 
