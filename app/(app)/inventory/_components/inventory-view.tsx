@@ -14,6 +14,7 @@ import {
 import {
   inventorySkuOfView,
   inventoryTypeEmptyTitle,
+  INVENTORY_VIEW_TABS,
   type InventoryAssetTypeFilter,
 } from "@/app/(app)/inventory/_components/inventory-model";
 import { SelectionBar } from "@/app/(app)/inventory/_components/selection-bar";
@@ -25,6 +26,7 @@ import { ListingFilterBar, listingFilterCount } from "@/components/listings/list
 import { MarketBrowseColumns, MarketInlineFilters, MarketFiltersButton, useFiltersOpen } from "@/components/listings/market-browse-frame";
 import { inventoryFacets, matchesInventoryFilters } from "@/lib/inventory/filters";
 import type { SmartViewGroup } from "@/components/patterns/smart-view";
+import { FilterChip, FilterOptionList } from "@/components/patterns/filter-bar";
 import type { SmartViewSort } from "@/components/patterns/smart-view-column-menu";
 import { InventoryTableSkeleton } from "@/components/shell/page-skeletons";
 import {
@@ -50,7 +52,7 @@ import {
 import type { DraftListingMode, InventoryAsset, InventoryGroup, InventorySort, ListingSearch } from "@/lib/fake-api/types";
 import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
 import { assetEditHref } from "@/lib/inventory/routes";
-import { isListable } from "@/lib/inventory/status";
+import { inventoryStatus, isListable, type InventoryStatus } from "@/lib/inventory/status";
 import { PER_ASSET_DRAFT_LIMIT } from "@/lib/listings/listing-edit";
 import { clearOpenSet, startOpenSet } from "@/lib/listings/open-set";
 import { listingEditHref } from "@/lib/listings/routes";
@@ -58,6 +60,7 @@ import { useSourcePickerParams } from "@/lib/sources/source-picker-params";
 
 type InventorySectionProps = {
   assetType: InventoryAssetTypeFilter;
+  status: InventoryStatus | "all";
   query: string;
   sort: InventorySort;
   onSortChange: (sort: InventorySort) => void;
@@ -92,6 +95,7 @@ const filterValues = (asset: InventoryAsset) => ({
 /** Inventory's **Assets**: the vendor's assets in their groups, with adding, grouping and deleting. */
 export function InventorySection({
   assetType,
+  status,
   query,
   sort,
   onSortChange,
@@ -120,13 +124,15 @@ export function InventorySection({
   const [columnWidths, setColumnWidth] = useInventoryColumnWidths(assetType);
   const hiddenColumnIds = hiddenColumnsByType[assetType];
 
-  const [filtersOpen, setFiltersOpen] = useFiltersOpen(assetType);
-  const scopedAssets = inventoryQuery.data?.assets ?? [];
+  const [filtersOpen, setFiltersOpen] = useFiltersOpen(status);
+  const scopedAssets = (inventoryQuery.data?.assets ?? []).filter((asset) =>
+    status === "all" || inventoryStatus(asset) === status);
   const facets = inventoryFacets(scopedAssets.map(filterValues));
   const assets = React.useMemo(
     () => (inventoryQuery.data?.assets ?? []).filter((asset) =>
+      (status === "all" || inventoryStatus(asset) === status) &&
       matchesInventoryFilters(filterValues(asset), filters)),
-    [inventoryQuery.data, filters],
+    [inventoryQuery.data, filters, status],
   );
   const inventoryGroups = React.useMemo(
     () => inventoryQuery.data?.groups ?? [],
@@ -276,7 +282,7 @@ export function InventorySection({
   );
 
   const searching = query.trim().length > 0;
-  const hasActiveFilters = searching || assetType !== "all" || listingFilterCount(filters) > 0;
+  const hasActiveFilters = searching || status !== "all" || assetType !== "all" || listingFilterCount(filters) > 0;
   const hasInventory = total > 0;
   const showInventoryChrome = hasInventory || hasActiveFilters;
 
@@ -286,15 +292,33 @@ export function InventorySection({
       disabled={addAssetDialogOpen}
       className="flex flex-col"
     >
-      <MarketBrowseColumns contentKey={assetType} resultCount={assets.length}
-        filters={<ListingFilterBar filters={filters} onChange={onFiltersChange} open={filtersOpen} facets={facets} showVerified={false} />}
+      <MarketBrowseColumns contentKey={status} resultCount={assets.length}
+        filters={<ListingFilterBar filters={filters} onChange={onFiltersChange} open={filtersOpen} facets={facets} showVerified={false}
+          onClear={(next) => onFiltersChange({ ...next, kinds: [] })}
+          additionalItems={[{
+            id: "asset-type",
+            active: filters.kinds.length > 0,
+            node: <FilterChip label="Asset type"
+              value={assetType === "all" ? null : INVENTORY_VIEW_TABS.find((tab) => tab.id === assetType)!.label}
+              onClear={() => onFiltersChange({ ...filters, kinds: [], languages: [], fileExtensions: [] })}>
+              <FilterOptionList label="Asset type" options={INVENTORY_VIEW_TABS.filter((tab) => tab.id !== "all")}
+                selected={assetType === "all" ? [] : [assetType]}
+                onChange={(selected) => onFiltersChange({
+                  ...filters,
+                  kinds: selected.length === 0 ? [] : [selected[0] === "codebase" ? "repo" : "zip"],
+                  languages: [], fileExtensions: [],
+                })}
+              />
+            </FilterChip>,
+          }]}
+        />}
         results={
       <section className="flex flex-col gap-3">
         <div className="flex min-h-8 items-center justify-between gap-3">
           {heading}
           {showInventoryChrome ? (
             <div className="flex shrink-0 items-center gap-1">
-              <MarketFiltersButton active={listingFilterCount(filters)} open={filtersOpen} onToggle={() => setFiltersOpen(!filtersOpen)} />
+              <MarketFiltersButton active={listingFilterCount(filters) + Number(filters.kinds.length > 0)} open={filtersOpen} onToggle={() => setFiltersOpen(!filtersOpen)} />
               <NewGroupButton onClick={() => setCreateGroupOpen(true)} />
               <InventoryColumnsMenu
                 assetType={assetType}
@@ -347,9 +371,9 @@ export function InventorySection({
           <Empty list>
             <EmptyHeader>
               <EmptyTitle>
-                {searching || listingFilterCount(filters) > 0 ? "No inventory items match these filters" : inventoryTypeEmptyTitle(assetType)}
+                {searching || status !== "all" || listingFilterCount(filters) > 0 ? "No inventory items match these filters" : inventoryTypeEmptyTitle(assetType)}
               </EmptyTitle>
-              {searching || listingFilterCount(filters) > 0 ? <EmptyDescription>No assets match the active filters.</EmptyDescription> : null}
+              {searching || status !== "all" || listingFilterCount(filters) > 0 ? <EmptyDescription>No assets match the active filters.</EmptyDescription> : null}
             </EmptyHeader>
           </Empty>
         ) : (

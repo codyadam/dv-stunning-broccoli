@@ -1,17 +1,16 @@
 import type { StatusMarkerStatus } from "@/components/ui/status-marker";
-import type { AssetListingRef, AssetStage, InventoryAsset } from "@/lib/fake-api/types";
+import type { AssetListingRef, InventoryAsset } from "@/lib/fake-api/types";
 
-const STAGE_LABEL: Record<AssetStage, string> = {
-  incomplete: "Fix details",
-  proposed: "Needs data",
-  complete: "Ready to list",
-};
+export const INVENTORY_STATUS = {
+  reading: { label: "Reading data", marker: "processing" },
+  proposed: { label: "Needs data", marker: "draft" },
+  incomplete: { label: "Fix details", marker: "attention" },
+  complete: { label: "Ready to list", marker: "complete" },
+  draft: { label: "In a draft listing", marker: "pending" },
+  published: { label: "Published", marker: "active" },
+} as const satisfies Record<string, { label: string; marker: StatusMarkerStatus }>;
 
-const STAGE_MARKER: Record<AssetStage, StatusMarkerStatus> = {
-  incomplete: "attention",
-  proposed: "draft",
-  complete: "complete",
-};
+export type InventoryStatus = keyof typeof INVENTORY_STATUS;
 
 type StatusInput = Pick<InventoryAsset, "stage" | "analysisStatus" | "listings">;
 
@@ -39,11 +38,15 @@ function isPublished(asset: Pick<InventoryAsset, "listings">): boolean {
 }
 
 /** The asset's place in its lifecycle, in the vendor's words. */
+export function inventoryStatus(asset: StatusInput): InventoryStatus {
+  if (isAnalyzing(asset)) return "reading";
+  if (isPublished(asset)) return "published";
+  if (isInListing(asset)) return "draft";
+  return asset.stage;
+}
+
 export function inventoryStatusLabel(asset: StatusInput): string {
-  if (isAnalyzing(asset)) return "Reading data";
-  if (isPublished(asset)) return "Published";
-  if (isInListing(asset)) return "In a draft listing";
-  return STAGE_LABEL[asset.stage];
+  return INVENTORY_STATUS[inventoryStatus(asset)].label;
 }
 
 /** What the status means for the vendor: whether the asset can be listed for sale, and why not. */
@@ -66,8 +69,5 @@ export function inventoryStatusDescription(asset: StatusInput): string {
 }
 
 export function inventoryStatusMarker(asset: StatusInput): StatusMarkerStatus {
-  if (isAnalyzing(asset)) return "processing";
-  if (isPublished(asset)) return "active";
-  if (isInListing(asset)) return "pending";
-  return STAGE_MARKER[asset.stage];
+  return INVENTORY_STATUS[inventoryStatus(asset)].marker;
 }
