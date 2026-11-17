@@ -2,17 +2,17 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { usePathname } from "next/navigation";
 import { RiCheckLine, RiFileCopyLine } from "@remixicon/react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { getNavbarBreadcrumbs } from "@/lib/shell/breadcrumbs";
+import { useListingNavigation } from "@/lib/shell/use-listing-navigation";
 import { useNavbarBreadcrumbPageLabelOverride } from "@/lib/shell/navbar-breadcrumb-context";
 
 export function AppNavbarBreadcrumbs() {
-  const pathname = usePathname();
-  const breadcrumb = getNavbarBreadcrumbs(pathname);
+  const { pathname, isOwnListing } = useListingNavigation();
+  const breadcrumb = getNavbarBreadcrumbs(pathname, isOwnListing);
   const pageLabelOverride = useNavbarBreadcrumbPageLabelOverride();
   const pageLabel = pageLabelOverride ?? breadcrumb.page;
   const [copied, setCopied] = useState(false);

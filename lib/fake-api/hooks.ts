@@ -2,6 +2,7 @@
 
 import {
   keepPreviousData,
+  skipToken,
   useInfiniteQuery,
   useMutation,
   useQuery,
@@ -62,10 +63,10 @@ export function useListingsBrowseQuery(search: ListingSearch) {
   });
 }
 
-export function useListingQuery(id: string) {
+export function useListingQuery(id: string | null) {
   return useQuery({
-    queryKey: queryKeys.listing(id),
-    queryFn: () => api.getListing(id),
+    queryKey: queryKeys.listing(id ?? ""),
+    queryFn: id ? () => api.getListing(id) : skipToken,
     refetchInterval: (query) =>
       query.state.data?.workspace?.status === "in_review" ? LISTING_REVIEW_POLL_MS : false,
   });

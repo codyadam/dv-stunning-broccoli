@@ -5,8 +5,8 @@ type NavbarBreadcrumb = {
   copyPageUrl?: boolean;
 };
 
-export function getNavbarBreadcrumbs(pathname: string): NavbarBreadcrumb {
-  if (pathname.startsWith("/listings/") && pathname.endsWith("/edit")) {
+export function getNavbarBreadcrumbs(pathname: string, isOwnListing = false): NavbarBreadcrumb {
+  if (isOwnListing || (pathname.startsWith("/listings/") && pathname.endsWith("/edit"))) {
     return { section: "Listings", sectionHref: "/inventory/listings", page: "Listing", copyPageUrl: true };
   }
   if (pathname.startsWith("/listings/")) {

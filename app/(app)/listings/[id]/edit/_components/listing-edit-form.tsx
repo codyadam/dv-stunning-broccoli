@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { flushSync } from "react-dom";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
@@ -244,7 +245,7 @@ export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: Listing
   const openSet = useOpenSet(listing.id);
   const saveStatus = useSaveStatus();
   const reveal = useEditFieldReveal();
-  const baseline = React.useMemo(() => draftOf(listing), [listing]);
+  const baseline = React.useMemo(() => draftOf(create.data ?? listing), [create.data, listing]);
   const [draft, setDraft] = React.useState<Draft>(baseline);
   const [errors, setErrors] = React.useState<ListingErrors>({});
   const [failedKeys, setFailedKeys] = React.useState<string[]>([]);
@@ -348,9 +349,11 @@ export function ListingEditForm({ listing = EMPTY_LISTING }: { listing?: Listing
       const saved = creating
         ? await create.mutateAsync(fields)
         : await update.mutateAsync({ id: listing.id, patch: patchOf(draft, changed) });
-      setDraft(draftOf(saved));
-      setFailedKeys([]);
-      saveStatus.saved();
+      flushSync(() => {
+        setDraft(draftOf(saved));
+        setFailedKeys([]);
+        saveStatus.saved();
+      });
       if (creating && navigate) router.replace(listingEditHref(saved.id));
       return true;
     } catch (error) {

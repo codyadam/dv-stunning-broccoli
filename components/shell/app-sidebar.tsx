@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useListingNavigation } from "@/lib/shell/use-listing-navigation";
 
 import { AppOrgSwitcher } from "@/components/shell/app-org-switcher";
 import { AppSidebarUser } from "@/components/shell/app-sidebar-user";
@@ -23,13 +23,12 @@ import {
 } from "@/components/ui/sidebar";
 import { NAV_GROUPS, navIsActive, type SidebarNavItem } from "@/lib/shell/nav";
 
-function SidebarNavItemButton({ item }: { item: SidebarNavItem }) {
-  const pathname = usePathname();
+function SidebarNavItemButton({ item, active }: { item: SidebarNavItem; active: boolean }) {
   const Icon = item.icon;
 
   return (
     <SidebarMenuButton
-      isActive={navIsActive(pathname, item.href)}
+      isActive={active}
       size="sm"
       tooltip={item.label}
       render={<Link href={item.href} />}
@@ -43,7 +42,7 @@ function SidebarNavItemButton({ item }: { item: SidebarNavItem }) {
 }
 
 export function AppSidebar() {
-  const pathname = usePathname();
+  const { pathname, isOwnListing } = useListingNavigation();
   return (
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader className="p-2">
@@ -67,13 +66,13 @@ export function AppSidebar() {
               <SidebarMenu>
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
-                    <SidebarNavItemButton item={item} />
+                    <SidebarNavItemButton item={item} active={navIsActive(pathname, item.href, isOwnListing)} />
                     {item.children ? (
                       <SidebarMenuSub>
                         {item.children.map((child) => (
                           <SidebarMenuSubItem key={child.href}>
                             <SidebarMenuSubButton
-                              isActive={navIsActive(pathname, child.href)}
+                              isActive={navIsActive(pathname, child.href, isOwnListing)}
                               render={<Link href={child.href} />}
                             >
                               {child.label}

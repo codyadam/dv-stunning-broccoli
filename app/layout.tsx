@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { NavigationGuardProvider } from "nextjs-nav-guard";
 
 import "./globals.css";
 import { siteFontClassName } from "@/app/fonts";
@@ -26,19 +27,21 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning className={siteFontClassName}>
       <body className="min-h-full flex flex-col">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Suspense>
-            <AppProviders>
-              <TooltipProvider>{children}</TooltipProvider>
-            </AppProviders>
-          </Suspense>
-          <Toaster />
-        </ThemeProvider>
+        <NavigationGuardProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Suspense>
+              <AppProviders>
+                <TooltipProvider>{children}</TooltipProvider>
+              </AppProviders>
+            </Suspense>
+            <Toaster />
+          </ThemeProvider>
+        </NavigationGuardProvider>
       </body>
     </html>
   );

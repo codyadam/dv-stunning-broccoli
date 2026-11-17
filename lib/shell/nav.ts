@@ -53,7 +53,8 @@ export const NAV_GROUPS: readonly SidebarNavGroup[] = [
   },
 ];
 
-export function navIsActive(pathname: string, href: string): boolean {
+export function navIsActive(pathname: string, href: string, isOwnListing = false): boolean {
+  if (isOwnListing) return href === "/inventory" || href === "/inventory/listings";
   if (href === "/browse") {
     return pathname === "/browse" || (pathname.startsWith("/listings/") && !pathname.endsWith("/edit"));
   }
