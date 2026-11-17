@@ -33,11 +33,17 @@ export function ListingAssetPicker({
   onOpenChange,
   excludeIds,
   onAdd,
+  title = "Add assets",
+  submitLabel,
+  busy = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   excludeIds: ReadonlySet<string>;
   onAdd: (assets: InventoryAsset[]) => void;
+  title?: string;
+  submitLabel?: string;
+  busy?: boolean;
 }) {
   const inventory = useInventoryQuery(ALL_INVENTORY);
   const [addOpen, setAddOpen] = React.useState(false);
@@ -66,10 +72,10 @@ export function ListingAssetPicker({
     });
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(next) => { if (!busy) onOpenChange(next); }}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add assets</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             Choose inventory assets or add new data. Assets become selectable when analysis finishes.
           </DialogDescription>
@@ -101,7 +107,7 @@ export function ListingAssetPicker({
                 >
                   <Checkbox
                     checked={picked.has(asset.id)}
-                    disabled={!isListable(asset)}
+                    disabled={busy || !isListable(asset)}
                     onCheckedChange={(checked) => toggle(asset.id, checked)}
                   />
                   <AssetTypeIcon kind={listingKindOfSku(asset.sku)} size="sm" />
@@ -116,7 +122,7 @@ export function ListingAssetPicker({
           </div>
         </DialogBody>
         <DialogFooter>
-          <Button variant="outline" onClick={() => {
+          <Button variant="outline" disabled={busy} onClick={() => {
             setQuery("");
             setAddOpen(true);
           }}>
@@ -124,13 +130,12 @@ export function ListingAssetPicker({
           </Button>
           <Button
             size="sm"
-            disabled={selected.length === 0}
+            disabled={busy || selected.length === 0}
             onClick={() => {
               onAdd(selected);
-              onOpenChange(false);
             }}
           >
-            {selected.length > 0 ? `Add ${selected.length} selected` : "Add selected"}
+            {submitLabel ?? (selected.length > 0 ? `Add ${selected.length} selected` : "Add selected")}
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -315,6 +315,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
       members: [...current.members, ...assets.map((asset) => ({ assetId: asset.id, price: priceText(asset.priceUsd) }))],
     }));
     clearError("assets");
+    setPickerOpen(false);
   };
 
   const setAutoClearing = (value: string) => {

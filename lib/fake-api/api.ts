@@ -819,8 +819,8 @@ function newListingRecord(assets: readonly AssetRecord[], now: number): ListingR
 }
 
 /**
- * Creates draft listings: one per asset, or one holding them all. A combined draft can start
- * empty. Asking prices prefill member prices when assets are supplied.
+ * Creates draft listings: one per asset, or one holding them all.
+ * At least one asset is required; asking prices prefill member prices.
  */
 export async function createDraftListings(
   assetIds: readonly string[],
@@ -834,7 +834,7 @@ export async function createDraftListings(
   const assets = assetIds.map(requireRecord);
   const unlistable = assets.find((asset) => !listableRecord(asset, now));
   if (unlistable) throw new ApiError(`“${unlistable.title}” has no analyzed data to list yet.`, 409);
-  if (assets.length === 0 && mode === "per_asset") {
+  if (assets.length === 0) {
     throw new ApiError("Pick at least one asset to list.", 400);
   }
   const groups = mode === "all" ? [assets] : assets.slice(0, PER_ASSET_DRAFT_LIMIT).map((asset) => [asset]);
