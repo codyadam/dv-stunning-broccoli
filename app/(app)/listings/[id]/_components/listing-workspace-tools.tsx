@@ -3,7 +3,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { RiDeleteBinLine, RiEditLine, RiEyeOffLine, RiRocketLine, RiToolsLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiEditLine, RiEyeOffLine, RiMoreLine, RiRocketLine, RiToolsLine } from "@remixicon/react";
 import { toast } from "sonner";
 
 import {
@@ -17,7 +17,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   useDeleteListingMutation,
   usePublishListingMutation,
@@ -27,7 +27,7 @@ import type { Listing, ListingStatus } from "@/lib/fake-api/types";
 import { listingEditHref } from "@/lib/listings/routes";
 
 /** Go live, edit, hide or delete a listing the vendor composed. */
-export function ListingManageCard({ listing, status }: { listing: Listing; status: ListingStatus }) {
+export function ListingActions({ listing, status }: { listing: Listing; status: ListingStatus }) {
   const router = useRouter();
   const publish = usePublishListingMutation();
   const unpublish = useUnpublishListingMutation();
@@ -56,51 +56,48 @@ export function ListingManageCard({ listing, status }: { listing: Listing; statu
     });
 
   return (
-    <Card aria-labelledby="listing-manage-heading">
-      <CardHeader className="pb-2">
-        <CardTitle id="listing-manage-heading">Manage listing</CardTitle>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-2">
+    <>
+      <div className="flex flex-wrap items-center gap-2">
         {status === "ready" ? (
-          <Button className="w-full" disabled={busy} onClick={goLive}>
+          <Button disabled={busy} onClick={goLive}>
             <RiRocketLine data-icon="inline-start" />
             Go live
           </Button>
         ) : null}
         {status === "needs_fixes" ? (
-          <Button className="w-full" disabled={busy} render={<Link href={listingEditHref(listing.id)} />}>
+          <Button disabled={busy} render={<Link href={listingEditHref(listing.id)} />}>
             <RiToolsLine data-icon="inline-start" />
             Fix and resubmit
           </Button>
-        ) : status === "live" ? (
-          <Button variant="secondary" className="w-full" disabled={busy} onClick={hide}>
-            <RiEyeOffLine data-icon="inline-start" />
-            Hide from catalog
-          </Button>
-        ) : (
+        ) : null}
+        {status !== "live" && status !== "needs_fixes" ? (
           <Button
             variant="secondary"
-            className="w-full"
             disabled={busy || status === "in_review"}
             render={status === "in_review" ? undefined : <Link href={listingEditHref(listing.id)} />}
           >
             <RiEditLine data-icon="inline-start" />
             Edit listing
           </Button>
-        )}
-        {status === "in_review" ? (
-          <p className="text-sm text-muted-foreground">Editing unlocks when quality checks finish.</p>
         ) : null}
-        <Button
-          variant="ghost"
-          className="w-full text-destructive hover:text-destructive"
-          disabled={busy}
-          onClick={() => setDeleteOpen(true)}
-        >
-          <RiDeleteBinLine data-icon="inline-start" />
-          Delete listing
-        </Button>
-      </CardContent>
+        <DropdownMenu>
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="More listing actions" disabled={busy} />}>
+            <RiMoreLine />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {status === "live" ? (
+              <DropdownMenuItem onClick={hide}>
+                <RiEyeOffLine />
+                Hide from catalog
+              </DropdownMenuItem>
+            ) : null}
+            <DropdownMenuItem variant="destructive" onClick={() => setDeleteOpen(true)}>
+              <RiDeleteBinLine />
+              Delete listing
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -119,6 +116,6 @@ export function ListingManageCard({ listing, status }: { listing: Listing; statu
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </Card>
+    </>
   );
 }

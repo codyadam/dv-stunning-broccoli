@@ -28,23 +28,8 @@ export function requiredStepState(run: QcRun): RequiredStepState {
 }
 
 export function badgeStepState(run: QcRun): BadgeStepState {
-  if (run.checks.every((check) => check.status === "passed")) return "earned";
-  if (tierChecks(run, "badge").some(isPending)) return "pending";
+  const checks = tierChecks(run, "badge");
+  if (checks.some(isPending)) return "pending";
+  if (checks.length > 0 && checks.every((check) => check.status === "passed")) return "earned";
   return "withheld";
 }
-
-/** How a run ended, for the run history: `running` until its last check finishes. */
-export type QcRunOutcome = "running" | "needs_fixes" | "verified" | "cleared";
-
-export function qcRunOutcome(run: QcRun): QcRunOutcome {
-  if (run.status === "running") return "running";
-  if (requiredStepState(run) === "blocked") return "needs_fixes";
-  return badgeStepState(run) === "earned" ? "verified" : "cleared";
-}
-
-export const QC_RUN_OUTCOME_LABEL: Readonly<Record<QcRunOutcome, string>> = {
-  running: "Running",
-  needs_fixes: "Needs fixes",
-  verified: "Passed, badge earned",
-  cleared: "Passed",
-};

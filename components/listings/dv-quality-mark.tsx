@@ -9,10 +9,11 @@ function qualityCertificationLabel(certified: boolean): string {
   return certified ? "DV quality certified" : "Not DV quality certified";
 }
 
-function qualityCertificationTooltip(certified: boolean): string {
-  return certified
-    ? "DV reviewed this listing and approved it for marketplace quality standards."
-    : "Some quality checks didn't pass in DV's latest review, so this listing isn't certified.";
+function qualityCertificationTooltip(listing: Pick<Listing, "dvQualityCertified" | "qcVerdicts">): string {
+  if (listing.dvQualityCertified) return "DV's quality assessment passed. Publishing readiness is reviewed separately.";
+  if (listing.qcVerdicts.some((verdict) => verdict.status === "pending")) return "The quality assessment is still running.";
+  if (listing.qcVerdicts.some((verdict) => verdict.status === "skipped")) return "Some quality checks could not be graded, so the verified badge has not been earned.";
+  return "Some quality checks didn't pass in DV's latest assessment, so this listing isn't certified.";
 }
 
 /** The listing's DV certification as an icon, with the label and check counts in a tooltip. */
@@ -24,6 +25,7 @@ export function DvQualityMark({
   className?: string;
 }) {
   const certified = listing.dvQualityCertified;
+  if (listing.qcVerdicts.length === 0) return null;
   const Icon = certified ? RiVerifiedBadgeFill : RiErrorWarningFill;
   const passed = listing.qcVerdicts.filter((verdict) => verdict.status === "passed").length;
 
@@ -46,11 +48,11 @@ export function DvQualityMark({
       <TooltipContent side="top" className="max-w-xs items-start text-left">
         <div className="flex flex-col gap-2">
           <span>{qualityCertificationLabel(certified)}</span>
-          <span className="text-muted-foreground">{qualityCertificationTooltip(certified)}</span>
+          <span className="text-muted-foreground">{qualityCertificationTooltip(listing)}</span>
           {certified ? (
             <div className="flex flex-col text-muted-foreground tabular-nums">
               <span>
-                {passed} of {listing.qcVerdicts.length} recommended checks passed
+                {passed} of {listing.qcVerdicts.length} quality checks passed
               </span>
               {listing.qcCheckedAt ? (
                 <span>Certified {formatDate(listing.qcCheckedAt)}</span>

@@ -162,7 +162,7 @@ function ChecklistSection({ group, assetId }: { group: ChecklistGroup; assetId: 
 }
 
 /** Starts a draft listing holding just this asset and opens it for editing. */
-function ListForSaleButton({ asset }: { asset: InventoryAsset }) {
+export function ListForSaleButton({ asset }: { asset: InventoryAsset }) {
   const router = useRouter();
   const createDrafts = useCreateDraftListingsMutation();
   const listable = isListable(asset);
@@ -262,13 +262,12 @@ export function AssetReadinessChecklist({ asset }: { asset: InventoryAsset }) {
           <ChecklistSection key={group.id} group={group} assetId={processing ? null : asset.id} />
         ))}
       </div>
-      <div className="flex items-center justify-between gap-3 border-t border-border p-4">
+      <div className="border-t border-border p-4">
         <p className="text-sm text-muted-foreground">
           {ready
             ? "Everything buyers need is here."
             : "Fill in the required fields so buyers see the full picture."}
         </p>
-        <ListForSaleButton asset={asset} />
       </div>
     </section>
   );

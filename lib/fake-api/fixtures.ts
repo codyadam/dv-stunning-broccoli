@@ -860,21 +860,21 @@ export const FORGE_REPOSITORIES: ForgeRepository[] = [
 type CheckSpec = Omit<QcVerdict, "status">;
 
 const CHECKS: CheckSpec[] = [
-  { id: "secrets", title: "Secrets scan", description: "No credentials, keys or tokens in the files or history.", group: "Listing", mandatory: true },
-  { id: "pii", title: "Personal data scan", description: "No personal data beyond what the listing declares.", group: "Listing", mandatory: false },
-  { id: "metadata", title: "Listing metadata", description: "Title, summary, domains and prices are filled in and consistent.", group: "Listing", mandatory: false },
+  { id: "secrets", title: "Secrets scan", description: "No credentials, keys or tokens in the files or history.", group: "Listing" },
+  { id: "pii", title: "Personal data scan", description: "No personal data beyond what the listing declares.", group: "Listing" },
+  { id: "metadata", title: "Listing metadata", description: "Title, summary, domains and prices are filled in and consistent.", group: "Listing" },
 ];
 
 const CODE_CHECKS: CheckSpec[] = [
-  { id: "history", title: "Git history", description: "The repository ships with its full commit history.", group: "Codebases", mandatory: true },
-  { id: "snapshot", title: "Repository snapshot", description: "A clean snapshot of the default branch is archived and opens.", group: "Codebases", mandatory: true },
-  { id: "docs", title: "Documentation quality", description: "A README and setup notes explain how to build and run it.", group: "Codebases", mandatory: false },
-  { id: "complexity", title: "Code complexity", description: "Most files stay within reasonable size and nesting.", group: "Codebases", mandatory: false },
+  { id: "history", title: "Git history", description: "The repository ships with its full commit history.", group: "Codebases" },
+  { id: "snapshot", title: "Repository snapshot", description: "A clean snapshot of the default branch is archived and opens.", group: "Codebases" },
+  { id: "docs", title: "Documentation quality", description: "A README and setup notes explain how to build and run it.", group: "Codebases" },
+  { id: "complexity", title: "Code complexity", description: "Most files stay within reasonable size and nesting.", group: "Codebases" },
 ];
 
 const DATA_CHECKS: CheckSpec[] = [
-  { id: "manifest", title: "Archive manifest", description: "Every file opens and matches the manifest's declared type.", group: "Raw data", mandatory: false },
-  { id: "duplicates", title: "Duplicate detection", description: "Fewer than 1% of records are near-duplicates.", group: "Raw data", mandatory: false },
+  { id: "manifest", title: "Archive manifest", description: "Every file opens and matches the manifest's declared type.", group: "Raw data" },
+  { id: "duplicates", title: "Duplicate detection", description: "Fewer than 1% of records are near-duplicates.", group: "Raw data" },
 ];
 
 /** The quality checks a listing of codebases and/or raw data runs, each with `statusOf`'s result. */

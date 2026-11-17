@@ -13,7 +13,7 @@ export type ListingLifecycleStage = {
 
 const STAGES: readonly { id: ListingLifecycleStageId; label: string; message: string }[] = [
   { id: "draft", label: "Draft", message: "Finish assets, pricing, and description, then submit for review." },
-  { id: "review", label: "Review", message: "Quality checks run automatically after you submit your listing." },
+  { id: "review", label: "Review", message: "Publishing requirements are reviewed after you submit your listing." },
   { id: "ready", label: "Ready", message: "Cleared to go live. Publish when you're ready for buyers to see this listing." },
   { id: "active", label: "Active", message: "Buyers can discover and purchase this listing in the catalog." },
 ];
@@ -50,7 +50,7 @@ export function listingLifecycle(status: ListingStatus): ListingLifecycleStage[]
         state: "attention",
         tooltip: {
           title: "Review needs attention",
-          message: "A required quality check failed. Edit the listing and resubmit to run the checks again.",
+          message: "A publishing requirement failed. Edit the listing and resubmit for review.",
         },
       };
     }
@@ -58,7 +58,7 @@ export function listingLifecycle(status: ListingStatus): ListingLifecycleStage[]
       return {
         ...base,
         state: "current",
-        tooltip: { title: null, message: "Quality checks are running. Editing unlocks when they finish." },
+        tooltip: { title: null, message: "Submission review is running. Editing unlocks when it finishes." },
       };
     }
     return { ...base, state: "current" };

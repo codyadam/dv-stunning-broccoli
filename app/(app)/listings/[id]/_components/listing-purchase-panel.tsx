@@ -16,7 +16,7 @@ function priceDrop(price: number, was: number | null): { was: number; percentOff
   return percentOff > 0 ? { was, percentOff } : null;
 }
 
-function ListingHeroPriceSummary({ listing, help }: { listing: Listing; help: ReactNode }) {
+export function ListingHeroPriceSummary({ listing }: { listing: Listing }) {
   const discount = priceDrop(listing.buyNowPrice, listing.priceBeforeDrop);
   return (
     <div className="flex flex-col gap-0.5">
@@ -34,7 +34,7 @@ function ListingHeroPriceSummary({ listing, help }: { listing: Listing; help: Re
           >
             <RiQuestionLine className="size-4" aria-hidden />
           </TooltipTrigger>
-          <TooltipContent className="max-w-64">{help}</TooltipContent>
+          <TooltipContent className="max-w-64">Paid by net-30 invoice, by US bank transfer.</TooltipContent>
         </Tooltip>
       </div>
       <div className="flex flex-wrap items-baseline gap-x-2">
@@ -85,16 +85,11 @@ function BlockedPurchaseAction({
  * The listing's price and the buyer's actions. The demo viewer is a vendor, so buying and
  * offering show disabled, each with its reason.
  */
-export function ListingPurchasePanel({ listing, isOwner }: { listing: Listing; isOwner: boolean }) {
-  const reason = isOwner
-    ? "You can't buy your own listing."
-    : "You can't perform this action as a vendor.";
+export function ListingPurchasePanel({ listing }: { listing: Listing }) {
+  const reason = "You can't perform this action as a vendor.";
   return (
     <div className="flex flex-col gap-5">
-      <ListingHeroPriceSummary
-        listing={listing}
-        help="Paid by net-30 invoice, by US bank transfer."
-      />
+      <ListingHeroPriceSummary listing={listing} />
       <div className="flex flex-col gap-2.5">
         <BlockedPurchaseAction reason={reason}>Buy now</BlockedPurchaseAction>
         <BlockedPurchaseAction

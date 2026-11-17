@@ -14,7 +14,7 @@ import { Markdown } from "@/components/ui/markdown";
 import { RelativeTime } from "@/components/ui/relative-time";
 import type { CodebaseActivitySource } from "@/lib/fake-api/hooks";
 import type { ListingAssetKind, QcVerdict } from "@/lib/fake-api/types";
-import { requiredFirst } from "@/lib/qc/verdicts";
+import { problemsFirst } from "@/lib/qc/verdicts";
 
 export type AssetFact = { label: string; value: ReactNode };
 
@@ -101,36 +101,16 @@ function VerdictLine({ verdict }: { verdict: QcVerdict }) {
 }
 
 function AssetChecksPanel({ quality }: { quality: AssetQuality }) {
-  const groups = [
-    { key: "required", label: "Checks", verdicts: quality.verdicts.filter((v) => v.mandatory) },
-    {
-      key: "optional",
-      label: "Recommended checks",
-      verdicts: quality.verdicts.filter((v) => !v.mandatory),
-    },
-  ].filter((group) => group.verdicts.length > 0);
   return (
-    <div className="rounded-lg bg-secondary p-3 text-secondary-foreground">
-      <div className="flex flex-col gap-5">
-        {groups.map((group, index) => (
-          <section key={group.key} className="flex flex-col gap-3">
-            <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-              <h3 className="font-medium">{group.label}</h3>
-              {index === 0 && quality.checkedAt ? (
-                <span className="shrink-0">
-                  Checked <RelativeTime at={quality.checkedAt} />
-                </span>
-              ) : null}
-            </div>
-            <ul className="flex flex-col gap-3">
-              {requiredFirst(group.verdicts).map((verdict) => (
-                <VerdictLine key={verdict.id} verdict={verdict} />
-              ))}
-            </ul>
-          </section>
-        ))}
+    <section aria-label="Quality assessment" className="flex flex-col gap-3 rounded-lg bg-secondary p-3 text-secondary-foreground">
+      <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+        <h3 className="font-medium">Quality assessment</h3>
+        {quality.checkedAt ? <span>Checked <RelativeTime at={quality.checkedAt} /></span> : null}
       </div>
-    </div>
+      <ul className="flex flex-col gap-3">
+        {problemsFirst(quality.verdicts).map((verdict) => <VerdictLine key={verdict.id} verdict={verdict} />)}
+      </ul>
+    </section>
   );
 }
 
@@ -159,7 +139,7 @@ export function AssetDetailViews({
   const metadata = <AssetFactsPanel facts={facts} description={description} />;
   const trailing: AssetViewTab[] =
     quality && quality.verdicts.length
-      ? [{ value: "quality", label: "Quality checks", node: <AssetChecksPanel quality={quality} /> }]
+      ? [{ value: "quality", label: "Quality assessment", node: <AssetChecksPanel quality={quality} /> }]
       : [];
   if (codebase) {
     return (

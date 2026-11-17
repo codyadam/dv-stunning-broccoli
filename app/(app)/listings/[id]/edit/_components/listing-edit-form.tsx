@@ -369,7 +369,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
     }
     try {
       await submit.mutateAsync(listing.id);
-      toast.success("Submitted for review", { description: "Quality checks take a few seconds in this demo." });
+      toast.success("Submitted for review", { description: "Submission review takes a few seconds in this demo." });
       const nextInSet = openSet?.find(
         (id) =>
           id !== listing.id &&
@@ -405,7 +405,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         : dirty
           ? { kind: "unsaved", fields: changed.map((key) => ({ key, label: labelOf(key) })) }
           : status === "in_review"
-            ? { kind: "locked", message: "Quality checks are still running." }
+            ? { kind: "locked", message: "Submission review is still running." }
             : run
               ? {
                   kind: "qc_issues",
@@ -491,7 +491,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
           stacked
           label={<label htmlFor="listing-description">Description</label>}
           marks={<span className="text-xs font-normal text-muted-foreground">Required</span>}
-          description={`Markdown works. Quality checks look for at least ${LISTING_DESCRIPTION_MIN} characters; this has ${draft.description.trim().length}.`}
+          description={`Markdown works. Publishing requires at least ${LISTING_DESCRIPTION_MIN} characters; this has ${draft.description.trim().length}.`}
           control={
             <Textarea
               id="listing-description"
@@ -656,7 +656,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
             <p className="text-sm text-muted-foreground">
               {run
                 ? `Fixed the issues from Run ${run.number}? Resubmitting starts Run ${run.number + 1} on the listing and its assets.`
-                : "Quality checks run on the listing and its assets. Once the required ones pass, you can make it live."}
+                : "Submission reviews publishing requirements and assesses quality separately. Passing the publishing requirements lets you go live; the quality assessment determines the verified badge."}
             </p>
           </div>
           <label className="flex items-center gap-2.5 text-sm">
