@@ -28,7 +28,7 @@ export type DemoUser = {
   email: string;
 };
 
-export type QcVerdictStatus = "passed" | "failed" | "pending";
+export type QcVerdictStatus = QcOutcome | "pending";
 
 /** One quality check result on a listing or asset. */
 export type QcVerdict = {

@@ -222,7 +222,7 @@ function qcRunViews(record: ListingRecord, now: number): QcRun[] {
   return record.qcRuns.map((run) => qcRunView(run, now)).reverse();
 }
 
-/** A run's checks as buyers read them; checks with nothing to grade read as not passed. */
+/** A run's checks as buyers read them, preserving outcomes and combining queued/running as pending. */
 function runVerdicts(run: QcRun): QcVerdict[] {
   return run.checks.map((check) => ({
     id: check.id,
@@ -230,7 +230,7 @@ function runVerdicts(run: QcRun): QcVerdict[] {
     description: check.summary,
     group: check.assetKind === "repo" ? "Codebases" : check.assetKind === "zip" ? "Raw data" : "Listing",
     mandatory: check.mandatory,
-    status: check.status === "passed" ? "passed" : check.status === "queued" || check.status === "running" ? "pending" : "failed",
+    status: check.status === "queued" || check.status === "running" ? "pending" : check.status,
   }));
 }
 

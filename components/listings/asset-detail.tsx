@@ -102,10 +102,10 @@ function VerdictLine({ verdict }: { verdict: QcVerdict }) {
 
 function AssetChecksPanel({ quality }: { quality: AssetQuality }) {
   const groups = [
-    { key: "required", label: "Checks", verdicts: quality.verdicts.filter((v) => v.mandatory) },
+    { key: "required", label: "Required to publish", verdicts: quality.verdicts.filter((v) => v.mandatory) },
     {
       key: "optional",
-      label: "Recommended checks",
+      label: "Verified badge",
       verdicts: quality.verdicts.filter((v) => !v.mandatory),
     },
   ].filter((group) => group.verdicts.length > 0);

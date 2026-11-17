@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { Collapsible } from "@base-ui/react/collapsible";
 import {
+  RiArrowDownSLine,
   RiCheckboxCircleFill,
   RiCloseCircleFill,
   RiErrorWarningFill,
+  RiTimeLine,
   RiVerifiedBadgeFill,
 } from "@remixicon/react";
 
-import { QC_REVEAL, QcChevron, QcStatusIcon, qcStatusLabel } from "@/components/listings/qc/qc-display";
-import { Card, CardAction, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { QcStatusIcon, qcStatusLabel } from "@/components/listings/qc/qc-display";
+import { Card, CardContent } from "@/components/ui/card";
 import { RelativeTime } from "@/components/ui/relative-time";
+import { Spinner } from "@/components/ui/spinner";
 import type { Listing, QcVerdict, QcVerdictStatus } from "@/lib/fake-api/types";
 import {
   listingQcHeadline,
@@ -18,14 +21,16 @@ import {
   listingQcTone,
   plural,
   problemsFirst,
-  requiredFirst,
   tallyQcVerdicts,
   type ListingQcVerdictTone,
 } from "@/lib/qc/verdicts";
-import { cn } from "@/lib/utils";
 
 function ToneIcon({ tone }: { tone: ListingQcVerdictTone }) {
   switch (tone) {
+    case "unreviewed":
+      return <RiTimeLine aria-hidden className="size-8 shrink-0 text-muted-foreground" />;
+    case "pending":
+      return <Spinner aria-hidden className="size-8 shrink-0 text-muted-foreground" />;
     case "verified":
       return <RiVerifiedBadgeFill aria-hidden className="size-8 shrink-0 text-blue-500" />;
     case "failed":
@@ -42,29 +47,27 @@ function ToneIcon({ tone }: { tone: ListingQcVerdictTone }) {
 type CheckGroup = { key: string; label: string; verdicts: QcVerdict[] };
 
 function checkGroups(verdicts: readonly QcVerdict[]): CheckGroup[] {
-  const groups: CheckGroup[] = [];
-  for (const verdict of verdicts) {
-    const group = groups.find((candidate) => candidate.key === verdict.group);
-    if (group) group.verdicts.push(verdict);
-    else groups.push({ key: verdict.group, label: verdict.group, verdicts: [verdict] });
-  }
-  return groups;
+  return [
+    { key: "required", label: "Required to publish", verdicts: verdicts.filter((verdict) => verdict.mandatory) },
+    { key: "badge", label: "Verified badge", verdicts: verdicts.filter((verdict) => !verdict.mandatory) },
+  ].filter((group) => group.verdicts.length > 0);
 }
 
 function groupStatus(group: CheckGroup): QcVerdictStatus {
   const tally = tallyQcVerdicts(group.verdicts);
   if (tally.failed > 0) return "failed";
   if (tally.pending > 0) return "pending";
+  if (tally.skipped > 0) return "skipped";
   return "passed";
 }
 
 function passedLabel(group: CheckGroup): string {
-  const { passed, total } = tallyQcVerdicts(group.verdicts);
-  return `${passed} of ${plural(total, "check")} passed`;
+  const { passed, total, skipped } = tallyQcVerdicts(group.verdicts);
+  return `${passed} of ${total} passed${skipped > 0 ? ` · ${skipped} not graded` : ""}`;
 }
 
-/** One check, with what it checks unless `brief`; only a non-passing status is spelled out. */
-function QcVerdictLine({ verdict, brief = false }: { verdict: QcVerdict; brief?: boolean }) {
+/** One check and its explanation; non-passing outcomes are named explicitly. */
+function QcVerdictLine({ verdict }: { verdict: QcVerdict }) {
   return (
     <li className="flex items-start gap-2.5 text-sm">
       <QcStatusIcon status={verdict.status} className="mt-0.5" />
@@ -78,110 +81,55 @@ function QcVerdictLine({ verdict, brief = false }: { verdict: QcVerdict; brief?:
             </span>
           )}
         </p>
-        {brief ? null : (
-          <p className="text-pretty text-muted-foreground">{verdict.description}</p>
-        )}
+        <p className="text-pretty text-muted-foreground">{verdict.description}</p>
       </div>
     </li>
   );
 }
 
 /**
- * The buyer's readout of every check on the listing: the overall verdict, a row per group of
- * checks, failures called out, and every check by name on demand.
+ * A compact quality summary that expands into publishing and badge checks.
  */
 export function ListingBuyerQualityCard({ listing }: { listing: Listing }) {
-  const [open, setOpen] = useState(false);
   const groups = checkGroups(listing.qcVerdicts);
   const tally = tallyQcVerdicts(listing.qcVerdicts);
   const tone = listingQcTone(listing.dvQualityCertified, tally);
-  const flaggedGroups = groups
-    .map((group) => ({
-      ...group,
-      verdicts: problemsFirst(group.verdicts.filter((verdict) => verdict.status === "failed")),
-    }))
-    .filter((group) => group.verdicts.length > 0);
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Quality checks</CardTitle>
-        {listing.qcCheckedAt ? (
-          <CardAction className="text-xs text-muted-foreground">
-            Checked <RelativeTime at={listing.qcCheckedAt} />
-          </CardAction>
-        ) : null}
-      </CardHeader>
-      <CardContent className="flex flex-col gap-5">
-        <div className="flex items-start gap-3">
-          <ToneIcon tone={tone} />
-          <div className="flex min-w-0 flex-col gap-0.5">
-            <p className="font-semibold">{listingQcHeadline(tally)}</p>
-            <p className="text-sm text-pretty text-muted-foreground">
-              {listingQcSentence(tone, tally)}
-            </p>
-          </div>
-        </div>
-        <ul className="flex flex-col divide-y rounded-md border">
-          {groups.map((group) => (
-            <li key={group.key} className="flex items-center gap-2.5 px-3 py-2 text-sm">
-              <QcStatusIcon status={groupStatus(group)} />
-              <span className="min-w-0 flex-1 truncate font-medium">{group.label}</span>
-              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
-                {passedLabel(group)}
-              </span>
-            </li>
-          ))}
-        </ul>
-        {flaggedGroups.length > 0 ? (
-          <div className="flex flex-col gap-4 rounded-md bg-muted/50 p-3">
-            {flaggedGroups.map((group) => (
-              <section key={group.key} className="flex flex-col gap-2">
-                <h3 className="text-xs font-medium text-muted-foreground">{group.label}</h3>
-                <ul className="flex flex-col gap-3">
-                  {group.verdicts.map((verdict) => (
-                    <QcVerdictLine key={verdict.id} verdict={verdict} />
-                  ))}
-                </ul>
-              </section>
-            ))}
-          </div>
-        ) : null}
-        <div className="flex flex-col gap-4">
-          <button
-            type="button"
-            aria-expanded={open}
-            onClick={() => setOpen((current) => !current)}
-            className="flex w-fit items-center gap-1 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {open
-              ? tally.total === 1
-                ? "Hide the check"
-                : "Hide the checks"
-              : tally.total === 1
-                ? "See the check"
-                : `See all ${plural(tally.total, "check")}`}
-            <QcChevron open={open} />
-          </button>
-          {open ? (
-            <div className={cn("flex flex-col gap-5", QC_REVEAL)}>
-              {groups.map((group) => (
-                <section key={group.key} className="flex flex-col gap-3">
-                  <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                    <h3 className="font-medium">{group.label}</h3>
-                    <span className="shrink-0">{passedLabel(group)}</span>
-                  </div>
-                  <ul className="flex flex-col gap-2">
-                    {requiredFirst(group.verdicts).map((verdict) => (
-                      <QcVerdictLine key={verdict.id} verdict={verdict} brief />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
+    <Collapsible.Root disabled={tally.total === 0} render={<Card className="gap-0 py-0" />}>
+      <Collapsible.Trigger
+        aria-label={`Quality report: ${listingQcHeadline(tally)}`}
+        className="group/quality flex w-full items-start gap-3 rounded-md p-4 text-left transition-colors enabled:hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <ToneIcon tone={tone} />
+        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="font-semibold">{listingQcHeadline(tally)}</span>
+          <span className="text-sm text-pretty text-muted-foreground">{listingQcSentence(tone, tally)}</span>
+          {tally.skipped > 0 && tally.requiredFailed > 0 ? (
+            <span className="text-xs text-muted-foreground">{plural(tally.skipped, "recommended check")} not graded.</span>
           ) : null}
-        </div>
-      </CardContent>
-    </Card>
+        </span>
+        {tally.total > 0 ? (
+          <RiArrowDownSLine aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open/quality:rotate-180 motion-reduce:transition-none" />
+        ) : null}
+      </Collapsible.Trigger>
+      <Collapsible.Panel className="border-t border-border">
+        <CardContent className="flex flex-col gap-5 py-4">
+          {listing.qcCheckedAt ? <p className="text-xs text-muted-foreground">Checked <RelativeTime at={listing.qcCheckedAt} /></p> : null}
+          {groups.map((group) => (
+            <section key={group.key} aria-label={group.label} className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <QcStatusIcon status={groupStatus(group)} />
+                <h3 className="font-semibold">{group.label}</h3>
+                <span className="ml-auto text-muted-foreground tabular-nums">{passedLabel(group)}</span>
+              </div>
+              <ul className="flex flex-col gap-3">
+                {problemsFirst(group.verdicts).map((verdict) => <QcVerdictLine key={verdict.id} verdict={verdict} />)}
+              </ul>
+            </section>
+          ))}
+        </CardContent>
+      </Collapsible.Panel>
+    </Collapsible.Root>
   );
 }
