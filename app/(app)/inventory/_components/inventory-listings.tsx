@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { RiFunctionFill } from "@remixicon/react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 
@@ -38,6 +39,12 @@ export function InventoryListings() {
   const [filtersOpen, setFiltersOpen] = useFiltersOpen(status);
   const ownListings = useOwnListingsQuery();
   const listings = ownListings.data ?? [];
+  const statuses = new Set(listings.map((listing) => listing.workspace?.status ?? "live"));
+  const statusTabs = STATUS_TABS.filter((tab) => tab.id === "all" || statuses.has(tab.id));
+  const hasSelectedStatus = status === "all" || statuses.has(status);
+  useEffect(() => {
+    if (ownListings.isSuccess && !hasSelectedStatus) void setStatus(null);
+  }, [ownListings.isSuccess, hasSelectedStatus, setStatus]);
   const query = search.query.trim().toLowerCase();
   const matching = listings.filter((listing) =>
     (status === "all" || (listing.workspace?.status ?? "live") === status) &&
@@ -72,7 +79,7 @@ export function InventoryListings() {
         onChange={(query) => setFilters((current) => ({ ...current, query }))}
         placeholder="Search listings by title or asset…"
       />
-      <FilterTabs tabs={STATUS_TABS} value={status} label="Listing status" className="mx-auto px-2"
+      <FilterTabs tabs={statusTabs} value={status} label="Listing status" className="mx-auto px-2"
         onSelect={(next) => void setStatus(next)}
       />
       </div>
