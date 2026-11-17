@@ -819,8 +819,8 @@ function newListingRecord(assets: readonly AssetRecord[], now: number): ListingR
 }
 
 /**
- * Creates draft listings from inventory assets: one per asset, or one holding them all. Asking
- * prices prefill the listing prices.
+ * Creates draft listings: one per asset, or one holding them all. A combined draft can start
+ * empty. Asking prices prefill member prices when assets are supplied.
  */
 export async function createDraftListings(
   assetIds: readonly string[],
@@ -828,10 +828,15 @@ export async function createDraftListings(
 ): Promise<{ ids: string[]; notCreated: number }> {
   await delay();
   const now = Date.now();
+  if (new Set(assetIds).size !== assetIds.length) {
+    throw new ApiError("An asset can be in a listing only once.", 400);
+  }
   const assets = assetIds.map(requireRecord);
   const unlistable = assets.find((asset) => !listableRecord(asset, now));
   if (unlistable) throw new ApiError(`“${unlistable.title}” has no analyzed data to list yet.`, 409);
-  if (assets.length === 0) throw new ApiError("Pick at least one asset to list.", 400);
+  if (assets.length === 0 && mode === "per_asset") {
+    throw new ApiError("Pick at least one asset to list.", 400);
+  }
   const groups = mode === "all" ? [assets] : assets.slice(0, PER_ASSET_DRAFT_LIMIT).map((asset) => [asset]);
   const records = groups.map((group) => newListingRecord(group, now));
   writeDb((db) => ({ ...db, listings: [...records, ...db.listings] }));
@@ -843,7 +848,12 @@ export async function createDraftListings(
 export async function listOwnListings(): Promise<Listing[]> {
   await delay();
   const now = Date.now();
-  return readDb().listings.map((record) => toOwnListing(record, now));
+  return [
+    ...LISTINGS.filter((listing) => listing.vendor.id === DEMO_VENDOR_ID),
+    ...readDb().listings.map((record) => toOwnListing(record, now)),
+  ].sort((a, b) =>
+    (b.workspace?.createdAt ?? b.postedAt).localeCompare(a.workspace?.createdAt ?? a.postedAt),
+  );
 }
 
 export async function getListingDraft(id: string): Promise<ListingDraft> {

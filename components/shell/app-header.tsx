@@ -1,28 +1,51 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { RiAddLine } from "@remixicon/react";
-
-import { dispatchOpenAddAsset } from "@/components/inventory/add-asset-dialog";
+import { Suspense } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { useCreateDraftListingsMutation } from "@/lib/fake-api/hooks";
+import { clearOpenSet } from "@/lib/listings/open-set";
+import { listingEditHref } from "@/lib/listings/routes";
+import { useInventoryAddDialogParam } from "@/lib/inventory/inventory-dialog-search-params";
 import { AppNavbarBreadcrumbs } from "@/components/shell/app-navbar-breadcrumbs";
 import { Button } from "@/components/ui/button";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { APP_PANEL_BREADCRUMB_CLASS } from "@/lib/shell/app-panel";
 import { cn } from "@/lib/utils";
 
+function CreateListingButton() {
+  const create = useCreateDraftListingsMutation();
+  const router = useRouter();
+  return (
+    <Button disabled={create.isPending} onClick={() => create.mutate(
+      { assetIds: [], mode: "all" },
+      {
+        onSuccess: ({ ids }) => {
+          clearOpenSet();
+          router.push(listingEditHref(ids[0]!, "title"));
+        },
+        onError: (error) => toast.error("Couldn't create listing", { description: error.message }),
+      },
+    )}>
+      {create.isPending ? "Creating…" : "Create listing"}
+    </Button>
+  );
+}
+
+function AddAssetButton() {
+  const [, setAdd] = useInventoryAddDialogParam();
+  return <Button onClick={() => void setAdd("1")}>Add asset</Button>;
+}
+
 /** One header action per list page; records stay empty. */
 function HeaderAction({ pathname }: { pathname: string }) {
   if (pathname === "/browse") {
-    return <Button render={<Link href="/inventory" />}>Sell my assets</Button>;
+    return <Button render={<Link href="/inventory/assets" />}>Sell my assets</Button>;
   }
-  if (pathname === "/inventory") {
-    return (
-      <Button type="button" onClick={() => dispatchOpenAddAsset()}>
-        <RiAddLine data-icon="inline-start" />
-        Add asset
-      </Button>
-    );
+  if (pathname === "/inventory/listings") return <CreateListingButton />;
+  if (pathname === "/inventory/assets") {
+    return <Suspense><AddAssetButton /></Suspense>;
   }
   return null;
 }

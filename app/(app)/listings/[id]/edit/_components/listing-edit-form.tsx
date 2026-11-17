@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { RiArrowLeftSLine, RiArrowRightSLine } from "@remixicon/react";
 import { toast } from "sonner";
 
-import { ListingAssetPicker } from "@/app/(app)/listings/[id]/edit/_components/listing-asset-picker";
+import { ListingAssetPicker } from "@/components/listings/listing-asset-picker";
 import {
   ListingEditStatusPanel,
   type StatusPanelState,
@@ -21,6 +21,7 @@ import {
   useSaveStatus,
 } from "@/components/edit-page/use-edit-page";
 import { InventoryAssetStatusMarker } from "@/components/inventory/inventory-asset-status-marker";
+import { InventoryActivityTray } from "@/components/inventory/inventory-activity-tray";
 import { AssetTypeIcon } from "@/components/listings/asset-type-icon";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -691,6 +692,7 @@ export function ListingEditForm({ listing }: { listing: ListingDraft }) {
         onSave={() => void save()}
       />
       {leaveDialog}
+      <InventoryActivityTray raised={dirty} />
       <ListingAssetPicker
         open={pickerOpen}
         onOpenChange={setPickerOpen}

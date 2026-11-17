@@ -16,6 +16,9 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubItem,
+  SidebarMenuSubButton,
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { NAV_GROUPS, navIsActive, type SidebarNavItem } from "@/lib/shell/nav";
@@ -40,6 +43,7 @@ function SidebarNavItemButton({ item }: { item: SidebarNavItem }) {
 }
 
 export function AppSidebar() {
+  const pathname = usePathname();
   return (
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader className="p-2">
@@ -64,6 +68,20 @@ export function AppSidebar() {
                 {group.items.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarNavItemButton item={item} />
+                    {item.children ? (
+                      <SidebarMenuSub>
+                        {item.children.map((child) => (
+                          <SidebarMenuSubItem key={child.href}>
+                            <SidebarMenuSubButton
+                              isActive={navIsActive(pathname, child.href)}
+                              render={<Link href={child.href} />}
+                            >
+                              {child.label}
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    ) : null}
                   </SidebarMenuItem>
                 ))}
               </SidebarMenu>

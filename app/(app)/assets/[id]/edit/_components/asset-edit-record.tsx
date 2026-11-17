@@ -29,7 +29,7 @@ export function AssetEditRecord({ assetId }: { assetId: string }) {
       <RecordUnavailableView
         title={missing ? "Asset not found" : "Couldn't load this asset"}
         description={missing ? "This asset is missing from your inventory." : assetQuery.error.message}
-        href="/inventory"
+        href="/inventory/assets"
         action="Back to inventory"
         onRetry={missing ? undefined : () => void assetQuery.refetch()}
       />

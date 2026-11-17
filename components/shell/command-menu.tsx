@@ -73,7 +73,7 @@ export function CommandMenu() {
           <CommandList className="max-h-90">
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup heading="Pages">
-              {NAV_GROUPS.flatMap((group) => group.items).map((item) => {
+              {NAV_GROUPS.flatMap((group) => group.items.flatMap((item) => [item, ...(item.children ?? [])])).map((item) => {
                 const Icon = item.icon;
                 return (
                   <CommandItem

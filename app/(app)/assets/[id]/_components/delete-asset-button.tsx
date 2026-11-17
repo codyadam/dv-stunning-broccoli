@@ -41,7 +41,7 @@ export function DeleteAssetButton({
       onSuccess: () => {
         setOpen(false);
         toast.success(`Deleted ${title}`);
-        router.push("/inventory");
+        router.push("/inventory/assets");
       },
       onError: (error) => toast.error(error.message),
     });

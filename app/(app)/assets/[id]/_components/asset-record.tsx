@@ -17,7 +17,7 @@ export function AssetRecord({ assetId }: { assetId: string }) {
         description={
           missing ? "This asset is missing from your inventory." : assetQuery.error.message
         }
-        href="/inventory"
+        href="/inventory/assets"
         action="Back to inventory"
         onRetry={missing ? undefined : () => void assetQuery.refetch()}
       />
