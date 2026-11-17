@@ -141,6 +141,15 @@ export function InventoryPageSkeleton() {
 export function AssetRecordPageSkeleton() {
   return (
     <PageContainer layout="content" className="flex flex-col gap-6">
+      <div className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-7 w-28" />
+        <Skeleton className="h-5 w-16" />
+        <div className="flex gap-2 sm:ml-auto">
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="size-8" />
+          <Skeleton className="size-8" />
+        </div>
+      </div>
       <div className="flex items-start gap-3">
         <Skeleton className="size-10 shrink-0 rounded-md" />
         <div className="flex min-w-0 flex-1 items-start justify-between gap-3">
@@ -159,15 +168,6 @@ export function AssetRecordPageSkeleton() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-5 w-16" />
-        <div className="flex flex-wrap gap-2 sm:ml-auto">
-          <Skeleton className="h-8 w-28" />
-          <Skeleton className="h-8 w-24" />
-          <Skeleton className="h-8 w-32" />
-        </div>
-      </div>
       <div className="flex flex-col gap-3">
         <Skeleton className="h-10 w-48 rounded-lg" />
         <Skeleton className="h-44 w-full rounded-lg" />
@@ -180,14 +180,14 @@ export function AssetRecordPageSkeleton() {
 export function ListingRecordPageSkeleton() {
   return (
     <PageContainer layout="content" className="flex flex-col gap-6">
-      <div className="grid overflow-hidden rounded-md border border-border bg-card md:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid overflow-hidden rounded-md border border-border bg-card @4xl/main:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-3 p-6">
           <Skeleton className="h-8 w-2/3" />
           <Skeleton className="h-6 w-28" />
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-5 w-full max-w-prose" />
         </div>
-        <div className="flex flex-col gap-5 border-t border-border bg-muted/40 p-7 md:border-t-0 md:border-l">
+        <div className="flex min-w-0 flex-col gap-5 border-t border-border bg-muted/40 p-7 @4xl/main:border-t-0 @4xl/main:border-l">
           <Skeleton className="h-11 w-36" />
           <div className="flex flex-col gap-2.5">
             <Skeleton className="h-9 w-full" />
@@ -200,10 +200,10 @@ export function ListingRecordPageSkeleton() {
         <div className="flex items-center gap-3 border-b border-border p-3">
           <Skeleton className="h-5 w-16" />
           <Skeleton className="h-7 w-48 rounded-full" />
-          <Skeleton className="ml-auto hidden h-8 w-56 md:block" />
+          <Skeleton className="ml-auto hidden h-8 w-56 @3xl/main:block" />
         </div>
-        <div className="grid lg:h-[clamp(420px,calc(100dvh-24rem),720px)] lg:grid-cols-[340px_minmax(0,1fr)]">
-          <div className="flex flex-col gap-1 border-b border-border p-1.5 lg:border-r lg:border-b-0">
+        <div className="grid @4xl/main:h-[clamp(420px,calc(100dvh-24rem),720px)] @4xl/main:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="flex flex-col gap-1 border-b border-border p-1.5 @4xl/main:border-r @4xl/main:border-b-0">
             {Array.from({ length: 5 }).map((_, index) => (
               <div key={index} className="flex items-center gap-3 px-2.5 py-2">
                 <Skeleton className="size-7 shrink-0 rounded-sm" />
@@ -214,7 +214,7 @@ export function ListingRecordPageSkeleton() {
               </div>
             ))}
           </div>
-          <div className="hidden flex-col gap-4 p-6 lg:flex">
+          <div className="hidden flex-col gap-4 p-6 @4xl/main:flex">
             <div className="flex items-center gap-3">
               <Skeleton className="size-9 shrink-0 rounded-sm" />
               <Skeleton className="h-5 w-48" />
@@ -224,7 +224,7 @@ export function ListingRecordPageSkeleton() {
           </div>
         </div>
       </div>
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 @4xl/main:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-3">
           <Skeleton className="h-6 w-28" />
           <Skeleton className="h-4 w-full max-w-prose" />

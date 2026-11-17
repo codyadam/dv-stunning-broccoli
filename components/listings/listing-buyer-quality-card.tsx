@@ -2,7 +2,6 @@
 
 import { Collapsible } from "@base-ui/react/collapsible";
 import {
-  RiArrowDownSLine,
   RiCheckboxCircleFill,
   RiCloseCircleFill,
   RiErrorWarningFill,
@@ -10,7 +9,8 @@ import {
   RiVerifiedBadgeFill,
 } from "@remixicon/react";
 
-import { QcStatusIcon, qcStatusLabel } from "@/components/listings/qc/qc-display";
+import { QcChevron, QcStatusIcon, qcStatusLabel } from "@/components/listings/qc/qc-display";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { RelativeTime } from "@/components/ui/relative-time";
 import { Spinner } from "@/components/ui/spinner";
@@ -19,7 +19,6 @@ import {
   listingQcHeadline,
   listingQcSentence,
   listingQcTone,
-  plural,
   problemsFirst,
   tallyQcVerdicts,
   type ListingQcVerdictTone,
@@ -47,10 +46,13 @@ function ToneIcon({ tone }: { tone: ListingQcVerdictTone }) {
 type CheckGroup = { key: string; label: string; verdicts: QcVerdict[] };
 
 function checkGroups(verdicts: readonly QcVerdict[]): CheckGroup[] {
-  return [
-    { key: "required", label: "Required to publish", verdicts: verdicts.filter((verdict) => verdict.mandatory) },
-    { key: "badge", label: "Verified badge", verdicts: verdicts.filter((verdict) => !verdict.mandatory) },
-  ].filter((group) => group.verdicts.length > 0);
+  const groups: CheckGroup[] = [];
+  for (const verdict of verdicts) {
+    const group = groups.find((candidate) => candidate.key === verdict.group);
+    if (group) group.verdicts.push(verdict);
+    else groups.push({ key: verdict.group, label: verdict.group, verdicts: [verdict] });
+  }
+  return groups;
 }
 
 function groupStatus(group: CheckGroup): QcVerdictStatus {
@@ -88,7 +90,7 @@ function QcVerdictLine({ verdict }: { verdict: QcVerdict }) {
 }
 
 /**
- * A compact quality summary that expands into publishing and badge checks.
+ * A compact buyer report that expands into results grouped by what was checked.
  */
 export function ListingBuyerQualityCard({ listing }: { listing: Listing }) {
   const groups = checkGroups(listing.qcVerdicts);
@@ -96,23 +98,20 @@ export function ListingBuyerQualityCard({ listing }: { listing: Listing }) {
   const tone = listingQcTone(listing.dvQualityCertified, tally);
 
   return (
-    <Collapsible.Root disabled={tally.total === 0} render={<Card className="gap-0 py-0" />}>
+    <Collapsible.Root disabled={tally.total === 0} render={<Card aria-label="Quality assessment" className="gap-0 py-0" />}>
       <Collapsible.Trigger
-        aria-label={`Quality report: ${listingQcHeadline(tally)}`}
-        className="group/quality flex w-full items-start gap-3 rounded-md p-4 text-left transition-colors enabled:hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-      >
-        <ToneIcon tone={tone} />
-        <span className="flex min-w-0 flex-1 flex-col gap-0.5">
-          <span className="font-semibold">{listingQcHeadline(tally)}</span>
-          <span className="text-sm text-pretty text-muted-foreground">{listingQcSentence(tone, tally)}</span>
-          {tally.skipped > 0 && tally.requiredFailed > 0 ? (
-            <span className="text-xs text-muted-foreground">{plural(tally.skipped, "recommended check")} not graded.</span>
-          ) : null}
-        </span>
-        {tally.total > 0 ? (
-          <RiArrowDownSLine aria-hidden className="mt-1 size-4 shrink-0 text-muted-foreground transition-transform group-data-panel-open/quality:rotate-180 motion-reduce:transition-none" />
-        ) : null}
-      </Collapsible.Trigger>
+        aria-label={`Quality assessment: ${listingQcHeadline(tally)}`}
+        render={(props, state) => (
+          <Button {...props} variant="ghost" className="h-auto w-full items-start justify-start gap-3 whitespace-normal p-4 text-left">
+            <ToneIcon tone={tone} />
+            <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="font-semibold">{listingQcHeadline(tally)}</span>
+              <span className="text-sm text-pretty text-muted-foreground">{listingQcSentence(tone, tally)}</span>
+            </span>
+            {tally.total > 0 ? <QcChevron open={state.open} /> : null}
+          </Button>
+        )}
+      />
       <Collapsible.Panel className="border-t border-border">
         <CardContent className="flex flex-col gap-5 py-4">
           {listing.qcCheckedAt ? <p className="text-xs text-muted-foreground">Checked <RelativeTime at={listing.qcCheckedAt} /></p> : null}

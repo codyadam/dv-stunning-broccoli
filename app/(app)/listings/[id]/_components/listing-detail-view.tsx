@@ -2,7 +2,7 @@
 
 import { ListingHeroTitle } from "@/app/(app)/listings/[id]/_components/listing-hero-title";
 import { ListingHeroPriceSummary, ListingPurchasePanel } from "@/app/(app)/listings/[id]/_components/listing-purchase-panel";
-import { ListingStatusAndQualityCard } from "@/app/(app)/listings/[id]/_components/listing-status-and-quality-card";
+import { ListingReviewPanel } from "@/app/(app)/listings/[id]/_components/listing-review-panel";
 import { ListingActions } from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
 import { AssetDeck } from "@/components/listings/asset-deck";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
@@ -53,14 +53,14 @@ function ListingOwnerActions({ listing }: { listing: Listing }) {
       <div className="flex flex-wrap items-center gap-2">
         {workspace ? <ListingActions listing={listing} status={status} /> : null}
         <Sheet>
-          <SheetTrigger render={<Button variant="outline" />}>Quality checks</SheetTrigger>
+          <SheetTrigger render={<Button variant="outline" />}>Review details</SheetTrigger>
           <SheetContent className="data-[side=right]:w-[calc(100%-1rem)] data-[side=right]:sm:max-w-xl">
             <SheetHeader className="shrink-0 pr-14">
-              <SheetTitle>Quality checks</SheetTitle>
+              <SheetTitle>Listing review</SheetTitle>
               <SheetDescription>{listing.title} · Only visible to your team</SheetDescription>
             </SheetHeader>
             <div className="scroll-fade min-h-0 overflow-y-auto px-6 pb-6">
-              <ListingStatusAndQualityCard
+              <ListingReviewPanel
                 listing={listing}
                 status={status}
                 editable={workspace !== null && (status === "needs_fixes" || status === "draft")}
@@ -70,10 +70,10 @@ function ListingOwnerActions({ listing }: { listing: Listing }) {
         </Sheet>
       </div>
       {status === "in_review" ? (
-        <p role="status" className="text-sm text-muted-foreground">Quality checks are running. Editing unlocks when they finish.</p>
+        <p role="status" className="text-sm text-muted-foreground">Submission review is running. Editing unlocks when it finishes.</p>
       ) : null}
       {issues > 0 && status === "needs_fixes" ? (
-        <p role="status" className="text-sm text-destructive">{plural(issues, "required check")} need{issues === 1 ? "s" : ""} fixes before publishing.</p>
+        <p role="status" className="text-sm text-destructive">{plural(issues, "publishing requirement")} need{issues === 1 ? "s" : ""} attention.</p>
       ) : null}
     </div>
   );
@@ -93,19 +93,12 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
         className="absolute -top-2.5 right-full mr-3 hidden @min-[71rem]/main:inline-flex"
       />
 
-      <header className="grid overflow-hidden rounded-md border border-border bg-card md:grid-cols-[minmax(0,1fr)_24rem]">
+      <header className="grid overflow-hidden rounded-md border border-border bg-card @4xl/main:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-3 p-6">
-          <div className="flex items-baseline justify-between gap-3">
-            <ListingHeroTitle
-              title={listing.title}
-              mark={<DvQualityMark listing={listing} className="ml-0.5 align-middle" />}
-            />
-            <span className="shrink-0 text-sm text-muted-foreground">
-              {listing.updatedAt
-                ? `Updated ${formatRelativeTime(listing.updatedAt)}`
-                : `Posted ${formatRelativeTime(listing.postedAt)}`}
-            </span>
-          </div>
+          <ListingHeroTitle
+            title={listing.title}
+            mark={<DvQualityMark listing={listing} className="ml-0.5 align-middle" />}
+          />
           <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
             {/* The gap matches the asset line below, which leaves room for the fanned deck. */}
             <OrgIdentity
@@ -114,6 +107,11 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
               openListings={listing.vendor.openListings}
               className="gap-3"
             />
+            <span className="text-sm text-muted-foreground">
+              {listing.updatedAt
+                ? `Updated ${formatRelativeTime(listing.updatedAt)}`
+                : `Posted ${formatRelativeTime(listing.postedAt)}`}
+            </span>
           </div>
           {assetCount > 0 ? (
             <a
@@ -135,7 +133,7 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
             <p className="max-w-prose text-pretty text-muted-foreground">{oneLiner}</p>
           ) : null}
         </div>
-        <div className="flex flex-col justify-center border-t border-border bg-muted/40 p-7 md:border-t-0 md:border-l">
+        <div className="flex min-w-0 flex-col justify-center border-t border-border bg-muted/40 p-7 @4xl/main:border-t-0 @4xl/main:border-l">
           {isOwner ? (
             <div className="flex flex-col gap-4">
               <ListingHeroPriceSummary listing={listing} />
@@ -147,7 +145,7 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
 
       <ListingAssetBrowser listing={listing} />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <div className="grid gap-6 @4xl/main:grid-cols-[minmax(0,1fr)_320px]">
         <div className="flex min-w-0 flex-col gap-8">
           {listing.descriptionMarkdown ? (
             <section aria-labelledby="listing-overview-heading" className="flex flex-col gap-3">

@@ -182,9 +182,9 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
       <section
         id={LISTING_ASSETS_ID}
         aria-label="Asset"
-        className="scroll-mt-6 flex flex-col overflow-hidden rounded-md border border-border bg-card lg:max-h-[clamp(616px,calc(100dvh-20.5rem),776px)]"
+        className="scroll-mt-6 flex flex-col overflow-hidden rounded-md border border-border bg-card @4xl/main:max-h-[clamp(616px,calc(100dvh-20.5rem),776px)]"
       >
-        <div className="scroll-fade scrollbar-thin min-h-0 p-6 lg:overflow-y-auto">
+        <div className="scroll-fade scrollbar-thin min-h-0 p-6 @4xl/main:overflow-y-auto">
           <ListingAssetDetail listing={listing} item={onlyItem} />
         </div>
       </section>
@@ -203,7 +203,7 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
       aria-label="Assets"
       className="scroll-mt-6 flex flex-col overflow-hidden rounded-md border border-border bg-card"
     >
-      <div className="flex flex-col gap-3 border-b border-border p-3 md:flex-row md:items-center">
+      <div className="flex flex-col gap-3 border-b border-border p-3 @3xl/main:flex-row @3xl/main:items-center">
         <span className="shrink-0 text-sm font-medium tabular-nums">{items.length} assets</span>
         <div className="flex min-w-0 flex-1 items-center">
           {groups.length > 1 ? (
@@ -234,7 +234,7 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
             <KindChip active kind={onlyGroup.kind} label={onlyGroup.label} count={onlyGroup.count} />
           ) : null}
         </div>
-        <InputGroup className="md:w-56">
+        <InputGroup className="@3xl/main:w-56">
           <InputGroupAddon align="inline-start">
             <RiSearchLine aria-hidden />
           </InputGroupAddon>
@@ -248,8 +248,8 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
       </div>
 
       {/* The floor fits the selected asset's header, view tabs and a 400px widget without scrolling. */}
-      <div className="grid lg:max-h-[clamp(616px,calc(100dvh-24rem),720px)] lg:grid-cols-[340px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-        <div className="flex min-h-0 flex-col border-b border-border lg:border-r lg:border-b-0">
+      <div className="grid @4xl/main:max-h-[clamp(616px,calc(100dvh-24rem),720px)] @4xl/main:grid-cols-[340px_minmax(0,1fr)] @4xl/main:grid-rows-[minmax(0,1fr)]">
+        <div className="flex min-h-0 flex-col border-b border-border @4xl/main:border-r @4xl/main:border-b-0">
           <ul
             ref={listRef}
             className="scroll-fade scrollbar-thin relative flex min-h-0 flex-col overflow-y-auto p-1.5"
@@ -273,7 +273,7 @@ export function ListingAssetBrowser({ listing }: { listing: Listing }) {
 
         <section
           aria-label="Selected asset"
-          className="scroll-fade scrollbar-thin min-w-0 p-6 lg:overflow-y-auto"
+          className="scroll-fade scrollbar-thin min-w-0 p-6 @4xl/main:overflow-y-auto"
         >
           {selected ? (
             <ListingAssetDetail key={selected.key} listing={listing} item={selected} />

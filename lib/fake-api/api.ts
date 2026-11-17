@@ -25,6 +25,7 @@ import {
   type QcSubject,
 } from "@/lib/fake-api/qc";
 import { codebaseStructure, rawDataStructure } from "@/lib/fake-api/structure";
+import { badgeStepState, tierChecks } from "@/lib/qc/runs";
 import type {
   AnalysisStatus,
   AssetListingRef,
@@ -222,14 +223,13 @@ function qcRunViews(record: ListingRecord, now: number): QcRun[] {
   return record.qcRuns.map((run) => qcRunView(run, now)).reverse();
 }
 
-/** A run's checks as buyers read them, preserving outcomes and combining queued/running as pending. */
+/** Buyers see the quality assessment, never the owner's required publishing checks. */
 function runVerdicts(run: QcRun): QcVerdict[] {
-  return run.checks.map((check) => ({
+  return tierChecks(run, "badge").map((check) => ({
     id: check.id,
     title: check.assetName ? `${check.label} · ${check.assetName}` : check.label,
     description: check.summary,
     group: check.assetKind === "repo" ? "Codebases" : check.assetKind === "zip" ? "Raw data" : "Listing",
-    mandatory: check.mandatory,
     status: check.status === "queued" || check.status === "running" ? "pending" : check.status,
   }));
 }
@@ -297,7 +297,7 @@ function toOwnListing(record: ListingRecord, now: number): Listing {
     buyNowPrice: assets.reduce((sum, asset) => sum + asset.priceUsd, 0),
     priceBeforeDrop: null,
     acceptsOffers: true,
-    dvQualityCertified: finished?.checks.every((check) => check.status === "passed") ?? false,
+    dvQualityCertified: finished !== null && badgeStepState(finished) === "earned",
     qcVerdicts: latest ? runVerdicts(latest) : [],
     qcCheckedAt: finished?.completedAt ?? null,
     qcRuns: runs,
@@ -862,7 +862,7 @@ export async function updateListing(id: string, patch: ListingPatch): Promise<Li
   const record = requireListingRecord(id);
   const status = listingStatus(record, now);
   const changesContent = Object.keys(patch).some((key) => key !== "autoClearingPriceUsd");
-  if (status === "in_review") throw new ApiError("Quality checks are still running.", 409);
+  if (status === "in_review") throw new ApiError("Submission review is still running.", 409);
   if (status === "live" && changesContent) {
     throw new ApiError("Hide this listing from the catalog to edit it.", 409);
   }
@@ -940,7 +940,7 @@ export async function publishListing(id: string): Promise<Listing> {
   const now = Date.now();
   const record = requireListingRecord(id);
   if (listingStatus(record, now) !== "ready") {
-    throw new ApiError("A listing goes live once its quality checks pass.", 409);
+    throw new ApiError("A listing goes live once its publishing requirements pass.", 409);
   }
   const at = new Date(now).toISOString();
   const next: ListingRecord = { ...record, status: "live", publishedAt: record.publishedAt ?? at, updatedAt: at };

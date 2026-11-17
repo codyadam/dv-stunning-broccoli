@@ -1,4 +1,5 @@
 import { formatPrice } from "@/lib/format";
+import { requiredStepState } from "@/lib/qc/runs";
 import type {
   CodebaseChannel,
   ListingAssetKind,
@@ -348,5 +349,5 @@ export function qcRunView(run: QcRunRecord, now: number): QcRun {
 export function qcRunCleared(run: QcRunRecord, now: number): boolean | null {
   const view = qcRunView(run, now);
   if (view.status === "running") return null;
-  return view.checks.every((check) => !check.mandatory || check.status === "passed");
+  return requiredStepState(view) === "cleared";
 }

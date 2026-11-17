@@ -30,15 +30,13 @@ export type DemoUser = {
 
 export type QcVerdictStatus = QcOutcome | "pending";
 
-/** One quality check result on a listing or asset. */
+/** A buyer-facing assessment result, independent of publishing requirements. */
 export type QcVerdict = {
   id: string;
   title: string;
   description: string;
   /** What the check covers: the listing as a whole, or one kind of its assets. */
   group: "Listing" | "Codebases" | "Raw data";
-  /** A failed required check fails the listing; a failed recommended one only warns. */
-  mandatory: boolean;
   status: QcVerdictStatus;
 };
 

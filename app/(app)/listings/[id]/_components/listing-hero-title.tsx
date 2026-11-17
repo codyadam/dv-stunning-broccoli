@@ -42,7 +42,7 @@ export function ListingHeroTitle({
           <h1
             ref={headingRef}
             className={cn(
-              "text-record-title max-h-[5.6lh] min-w-0 overflow-hidden text-pretty",
+              "text-record-title max-h-[5.6lh] min-w-0 overflow-hidden text-pretty wrap-anywhere",
               clipped && "mask-b-from-[calc(100%-0.6lh)]",
             )}
           />
