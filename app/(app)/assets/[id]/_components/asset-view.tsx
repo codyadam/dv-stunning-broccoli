@@ -1,22 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { RiArrowRightSLine, RiGlobalLine, RiLockLine, RiPencilLine } from "@remixicon/react";
 
-import { AssetReadinessChecklist } from "@/app/(app)/assets/[id]/_components/asset-readiness-checklist";
-import { DeleteAssetButton } from "@/app/(app)/assets/[id]/_components/delete-asset-button";
-import { MetaRow } from "@/components/inventory/asset-record-parts";
+import { AssetReadinessChecklist, ListForSaleButton } from "@/app/(app)/assets/[id]/_components/asset-readiness-checklist";
+import { AssetActionsMenu } from "@/app/(app)/assets/[id]/_components/asset-actions-menu";
 import { InventoryAssetStatusMarker } from "@/components/inventory/inventory-asset-status-marker";
 import { LanguageBadges } from "@/components/inventory/language-badges";
 import { AssetDetailHeader, AssetDetailViews, type AssetFact } from "@/components/listings/asset-detail";
 import { AssetPreviewTree } from "@/components/listings/asset-preview-tree";
 import { OrgIdentity } from "@/components/organizations/org-identity";
-import { OwnerBand } from "@/components/patterns/owner-band";
 import { BackButton } from "@/components/shell/back-button";
 import { PageContainer } from "@/components/shell/page-layout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { StatusMarker } from "@/components/ui/status-marker";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AssetListingRef, InventoryAsset } from "@/lib/fake-api/types";
@@ -100,7 +99,7 @@ function assetFacts(asset: InventoryAsset): AssetFact[] {
 }
 
 /** The asset as buyers see it on its page: header with the owning vendor, then its views. */
-function PublicAssetDetail({ asset }: { asset: InventoryAsset }) {
+function PublicAssetDetail({ asset, actions }: { asset: InventoryAsset; actions: ReactNode }) {
   const languages = asset.codebase?.languages ?? [];
   return (
     <div className="flex flex-col gap-6">
@@ -115,6 +114,7 @@ function PublicAssetDetail({ asset }: { asset: InventoryAsset }) {
           className="sm:w-64 sm:shrink-0"
         />
       </div>
+      {actions}
       <AssetDetailViews
         resetKey={asset.id}
         codebase={
@@ -145,8 +145,8 @@ function PublicAssetDetail({ asset }: { asset: InventoryAsset }) {
 }
 
 /**
- * The owning team's asset page: the readiness checklist and record tools in the owner band,
- * then the asset exactly as buyers see it.
+ * The asset leads with its identity and content. Owner actions stay compact; readiness opens
+ * on demand without moving the record.
  */
 export function AssetView({ asset }: { asset: InventoryAsset }) {
   useNavbarBreadcrumbPageLabel(asset.title);
@@ -159,70 +159,56 @@ export function AssetView({ asset }: { asset: InventoryAsset }) {
         className="absolute -top-2.5 right-full mr-3 hidden @min-[71rem]/main:inline-flex"
       />
 
-      <OwnerBand>
-        <AssetReadinessChecklist asset={asset} />
-        <div className="flex flex-col gap-4">
-          <Card size="sm">
-            <CardContent className="flex flex-col gap-3">
-              <MetaRow label="Status">
-                <InventoryAssetStatusMarker asset={asset} showLabel />
-              </MetaRow>
-              <MetaRow label="Visibility">
-                <AssetVisibilityBadge listings={asset.listings} />
-              </MetaRow>
+      <PublicAssetDetail asset={asset} actions={
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-3">
+            <InventoryAssetStatusMarker asset={asset} showLabel />
+            <AssetVisibilityBadge listings={asset.listings} />
+            <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              <ListForSaleButton asset={asset} />
               <Button
                 variant="secondary"
-                className="w-full"
                 render={<Link href={assetEditHref(asset.id)} />}
               >
                 <RiPencilLine data-icon="inline-start" />
                 Edit asset
               </Button>
-              <DeleteAssetButton
+              <Sheet>
+                <SheetTrigger render={<Button variant="outline" />}>Readiness details</SheetTrigger>
+                <SheetContent className="data-[side=right]:w-[calc(100%-1rem)] data-[side=right]:sm:max-w-xl">
+                  <SheetHeader className="shrink-0 pr-14">
+                    <SheetTitle>Readiness details</SheetTitle>
+                    <SheetDescription>{asset.title} · Only visible to your team</SheetDescription>
+                  </SheetHeader>
+                  <div className="scroll-fade flex min-h-0 flex-col gap-6 overflow-y-auto px-6 pb-6">
+                    <AssetReadinessChecklist asset={asset} />
+                    <section className="flex flex-col gap-3">
+                      <h2 className="text-base font-semibold">In {asset.listings.length} {asset.listings.length === 1 ? "listing" : "listings"}</h2>
+                      {asset.listings.length ? asset.listings.map((listing) => (
+                        <Button key={listing.id} variant="secondary" className="w-full justify-between" render={<Link href={listing.status === "draft" ? listingEditHref(listing.id) : listingHref(listing.id)} />}>
+                          <span className="flex min-w-0 items-center gap-2">
+                            <StatusMarker status={LISTING_STATUS_MARKER[listing.status]} label={LISTING_STATUS_LABEL[listing.status]} />
+                            <span className="truncate">{listing.title}</span>
+                          </span>
+                          <RiArrowRightSLine data-icon="inline-end" />
+                        </Button>
+                      )) : <p className="text-sm text-muted-foreground">Not in any listing yet.</p>}
+                    </section>
+                  </div>
+                </SheetContent>
+              </Sheet>
+              <AssetActionsMenu
                 assetId={asset.id}
                 title={asset.title}
                 inListings={isInListing(asset)}
               />
-            </CardContent>
-          </Card>
-          <Card size="sm">
-            <CardHeader>
-              <h2 className="text-base font-semibold">
-                {asset.listings.length === 1 ? "In 1 listing" : `In ${asset.listings.length} listings`}
-              </h2>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1">
-              {asset.listings.length ? (
-                asset.listings.map((listing) => (
-                  <Button
-                    key={listing.id}
-                    variant="secondary"
-                    className="w-full justify-between gap-1"
-                    render={
-                      <Link
-                        href={listing.status === "draft" ? listingEditHref(listing.id) : listingHref(listing.id)}
-                      />
-                    }
-                  >
-                    <span className="flex min-w-0 items-center gap-2">
-                      <StatusMarker
-                        status={LISTING_STATUS_MARKER[listing.status]}
-                        label={LISTING_STATUS_LABEL[listing.status]}
-                      />
-                      <span className="min-w-0 truncate">{listing.title}</span>
-                    </span>
-                    <RiArrowRightSLine data-icon="inline-end" />
-                  </Button>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground">Not in any listing yet.</p>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          </div>
+          {asset.analysisStatus === "complete" && asset.missing.length > 0 ? (
+            <p className="text-sm text-muted-foreground">{asset.missing.length} missing {asset.missing.length === 1 ? "detail" : "details"} · {asset.missing.join(", ")}</p>
+          ) : null}
         </div>
-      </OwnerBand>
-
-      <PublicAssetDetail asset={asset} />
+      } />
     </PageContainer>
   );
 }

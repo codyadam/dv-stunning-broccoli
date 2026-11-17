@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RiDeleteBinLine } from "@remixicon/react";
+import { RiDeleteBinLine, RiMoreLine } from "@remixicon/react";
 import { toast } from "sonner";
 
 import {
@@ -16,14 +16,14 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { useDeleteAssetsMutation } from "@/lib/fake-api/hooks";
 
 /**
  * Deletes the asset after a confirm, then returns to the inventory. Disabled while a listing
  * holds the asset, since the API refuses that delete.
  */
-export function DeleteAssetButton({
+export function AssetActionsMenu({
   assetId,
   title,
   inListings,
@@ -47,31 +47,20 @@ export function DeleteAssetButton({
     });
   };
 
-  const button = (
-    <Button
-      type="button"
-      variant="destructive"
-      className="w-full"
-      disabled={inListings}
-      onClick={() => setOpen(true)}
-    >
-      <RiDeleteBinLine data-icon="inline-start" />
-      Delete asset
-    </Button>
-  );
-
   return (
     <>
-      {inListings ? (
-        <Tooltip>
-          <TooltipTrigger render={<span className="flex w-full" />}>{button}</TooltipTrigger>
-          <TooltipContent className="max-w-64 text-pretty">
-            Remove this asset from its listings before deleting it.
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        button
-      )}
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button variant="ghost" size="icon" aria-label="More asset actions" />}>
+          <RiMoreLine />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem variant="destructive" disabled={inListings} onClick={() => setOpen(true)}>
+            <RiDeleteBinLine />
+            Delete asset
+          </DropdownMenuItem>
+          {inListings ? <p className="max-w-56 px-2 py-1 text-xs text-muted-foreground">Remove this asset from its listings before deleting it.</p> : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

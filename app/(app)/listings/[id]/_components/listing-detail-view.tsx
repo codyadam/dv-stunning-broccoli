@@ -1,25 +1,28 @@
 "use client";
 
-import Link from "next/link";
-
 import { ListingHeroTitle } from "@/app/(app)/listings/[id]/_components/listing-hero-title";
-import { ListingPurchasePanel } from "@/app/(app)/listings/[id]/_components/listing-purchase-panel";
+import { ListingHeroPriceSummary, ListingPurchasePanel } from "@/app/(app)/listings/[id]/_components/listing-purchase-panel";
 import { ListingStatusAndQualityCard } from "@/app/(app)/listings/[id]/_components/listing-status-and-quality-card";
-import { ListingManageCard } from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
+import { ListingActions } from "@/app/(app)/listings/[id]/_components/listing-workspace-tools";
 import { AssetDeck } from "@/components/listings/asset-deck";
-import { AssetKindTile } from "@/components/listings/asset-type-icon";
 import { DvQualityMark } from "@/components/listings/dv-quality-mark";
 import { LISTING_ASSETS_ID, ListingAssetBrowser } from "@/components/listings/listing-asset-browser";
 import { ListingBuyerQualityCard } from "@/components/listings/listing-buyer-quality-card";
 import { OrgIdentity } from "@/components/organizations/org-identity";
-import { OwnerBand } from "@/components/patterns/owner-band";
 import { BackButton } from "@/components/shell/back-button";
 import { PageContainer } from "@/components/shell/page-layout";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { Markdown } from "@/components/ui/markdown";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
+import { StatusMarker } from "@/components/ui/status-marker";
 import type { Listing } from "@/lib/fake-api/types";
 import { formatRelativeTime } from "@/lib/format";
+import { LISTING_STATUS_LABEL } from "@/lib/listings/listing-edit";
+import { LISTING_STATUS_MARKER } from "@/lib/listings/routes";
+import { isIssue } from "@/lib/qc/runs";
+import { plural } from "@/lib/qc/verdicts";
 import { SESSION } from "@/lib/session";
 import { useNavbarBreadcrumbPageLabel } from "@/lib/shell/navbar-breadcrumb-context";
 
@@ -38,49 +41,41 @@ function TagRow({ label, tags }: { label: string; tags: readonly string[] }) {
   );
 }
 
-/** What only the listing's owner sees: its status and the inventory assets it sells. */
-function ListingOwnerTools({ listing }: { listing: Listing }) {
-  const assets = listing.assets.filter((asset) => asset.inventoryAssetId !== null);
+/** Owner actions stay beside the listing; checks and history open on demand. */
+function ListingOwnerActions({ listing }: { listing: Listing }) {
   const workspace = listing.workspace;
-  const inventoryCard = (
-    <Card aria-labelledby="listing-inventory-heading">
-      <CardHeader className="pb-2">
-        <CardTitle id="listing-inventory-heading">From your inventory</CardTitle>
-      </CardHeader>
-      <CardContent>
-        {assets.length ? (
-          <ul className="-mx-2 flex flex-col">
-            {assets.map((asset) => (
-              <li key={asset.name}>
-                <Link
-                  href={`/assets/${asset.inventoryAssetId}`}
-                  className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 text-sm transition-colors hover:bg-accent"
-                >
-                  <AssetKindTile kind={asset.kind} size="sm" />
-                  <span className="min-w-0 truncate font-medium">{asset.name}</span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">No inventory assets.</p>
-        )}
-      </CardContent>
-    </Card>
-  );
   const status = workspace?.status ?? "live";
+  const latest = listing.qcRuns[0];
+  const issues = latest?.checks.filter((check) => check.mandatory && isIssue(check)).length ?? 0;
   return (
-    <OwnerBand>
-      <ListingStatusAndQualityCard
-        listing={listing}
-        status={status}
-        editable={workspace !== null && (status === "needs_fixes" || status === "draft")}
-      />
-      <div className="flex min-w-0 flex-col gap-4">
-        {workspace ? <ListingManageCard listing={listing} status={workspace.status} /> : null}
-        {inventoryCard}
+    <div className="flex flex-col gap-3">
+      <StatusMarker status={LISTING_STATUS_MARKER[status]} label={LISTING_STATUS_LABEL[status]} showLabel />
+      <div className="flex flex-wrap items-center gap-2">
+        {workspace ? <ListingActions listing={listing} status={status} /> : null}
+        <Sheet>
+          <SheetTrigger render={<Button variant="outline" />}>Quality checks</SheetTrigger>
+          <SheetContent className="data-[side=right]:w-[calc(100%-1rem)] data-[side=right]:sm:max-w-xl">
+            <SheetHeader className="shrink-0 pr-14">
+              <SheetTitle>Quality checks</SheetTitle>
+              <SheetDescription>{listing.title} · Only visible to your team</SheetDescription>
+            </SheetHeader>
+            <div className="scroll-fade min-h-0 overflow-y-auto px-6 pb-6">
+              <ListingStatusAndQualityCard
+                listing={listing}
+                status={status}
+                editable={workspace !== null && (status === "needs_fixes" || status === "draft")}
+              />
+            </div>
+          </SheetContent>
+        </Sheet>
       </div>
-    </OwnerBand>
+      {status === "in_review" ? (
+        <p role="status" className="text-sm text-muted-foreground">Quality checks are running. Editing unlocks when they finish.</p>
+      ) : null}
+      {issues > 0 && status === "needs_fixes" ? (
+        <p role="status" className="text-sm text-destructive">{plural(issues, "required check")} need{issues === 1 ? "s" : ""} fixes before publishing.</p>
+      ) : null}
+    </div>
   );
 }
 
@@ -97,8 +92,6 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
         fallbackHref="/browse"
         className="absolute -top-2.5 right-full mr-3 hidden @min-[71rem]/main:inline-flex"
       />
-
-      {isOwner ? <ListingOwnerTools listing={listing} /> : null}
 
       <header className="grid overflow-hidden rounded-md border border-border bg-card md:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="flex min-w-0 flex-col gap-3 p-6">
@@ -143,7 +136,12 @@ export function ListingDetailView({ listing }: { listing: Listing }) {
           ) : null}
         </div>
         <div className="flex flex-col justify-center border-t border-border bg-muted/40 p-7 md:border-t-0 md:border-l">
-          <ListingPurchasePanel listing={listing} isOwner={isOwner} />
+          {isOwner ? (
+            <div className="flex flex-col gap-4">
+              <ListingHeroPriceSummary listing={listing} />
+              <ListingOwnerActions listing={listing} />
+            </div>
+          ) : <ListingPurchasePanel listing={listing} />}
         </div>
       </header>
 

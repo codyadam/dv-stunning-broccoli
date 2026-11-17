@@ -1,5 +1,4 @@
 import { PageContainer } from "@/components/shell/page-layout";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -138,7 +137,7 @@ export function InventoryPageSkeleton() {
   );
 }
 
-/** Inventory asset record: header, linked-source card, description, and the 280px card rail. */
+/** Asset record: identity, compact owner controls, and the existing detail tabs. */
 export function AssetRecordPageSkeleton() {
   return (
     <PageContainer layout="content" className="flex flex-col gap-6">
@@ -160,65 +159,18 @@ export function AssetRecordPageSkeleton() {
         </div>
       </div>
 
-      <div className="grid gap-6 @3xl/main:grid-cols-[minmax(0,1fr)_280px]">
-        <div className="flex min-w-0 flex-col gap-4">
-          <div className="overflow-hidden rounded-md border border-border bg-card">
-            <div className="flex h-10 items-center justify-between gap-4 border-b border-border px-3">
-              <div className="flex gap-4">
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-20" />
-              </div>
-              <Skeleton className="h-4 w-20" />
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2.5">
-              <Skeleton className="size-4 shrink-0 rounded-sm" />
-              <Skeleton className="h-4 w-40" />
-            </div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <Skeleton className="h-4 w-20" />
-            <Skeleton className="h-4 w-2/3" />
-          </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <Skeleton className="h-5 w-28" />
+        <Skeleton className="h-5 w-16" />
+        <div className="flex flex-wrap gap-2 sm:ml-auto">
+          <Skeleton className="h-8 w-28" />
+          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-8 w-32" />
         </div>
-
-        <div className="flex flex-col gap-3">
-          <Card size="sm">
-            <CardHeader>
-              <Skeleton className="h-5 w-36" />
-            </CardHeader>
-            <CardContent className="flex flex-col items-start gap-1.5">
-              <Skeleton className="h-7 w-40" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-6 w-28" />
-            </CardContent>
-          </Card>
-          <Card size="sm">
-            <CardHeader>
-              <Skeleton className="h-5 w-14" />
-            </CardHeader>
-            <CardContent className="flex flex-col gap-3">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div
-                  key={index}
-                  className="flex items-center justify-between gap-3"
-                >
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-4 w-16" />
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-          <Card size="sm">
-            <CardHeader>
-              <Skeleton className="h-5 w-24" />
-            </CardHeader>
-            <CardContent className="flex flex-col gap-1">
-              <Skeleton className="h-8 w-full" />
-              <Skeleton className="mt-2 h-8 w-full" />
-            </CardContent>
-          </Card>
-        </div>
+      </div>
+      <div className="flex flex-col gap-3">
+        <Skeleton className="h-10 w-48 rounded-lg" />
+        <Skeleton className="h-44 w-full rounded-lg" />
       </div>
     </PageContainer>
   );
